@@ -13,6 +13,21 @@ func extractRedirectionPolicyControllerFromClientOptions(options *[]drivenAppPor
 			remainingOptions = append(remainingOptions, option)
 		}
 	}
+	if controller == nil {
+		controller = func(statusCode int, targetURL string, header map[string][]string) (redirectability bool) {
+			if targetURL == "" {
+				redirectability = false
+				return
+			}
+			if statusCode < 300 && statusCode > 399 {
+				redirectability = false
+				return
+			}
+
+			redirectability = true
+			return
+		}
+	}
 
 	return controller, &remainingOptions
 }

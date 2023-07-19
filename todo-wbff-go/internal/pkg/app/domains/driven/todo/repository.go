@@ -23,9 +23,7 @@ type repository struct {
 	restfulClientFactoryProvider drivenAppPortsRestful.ClientFactoryProvider
 }
 
-func NewRepository(
-	restfulClientFactoryProvider drivenAppPortsRestful.ClientFactoryProvider,
-) Repository {
+func NewRepository(restfulClientFactoryProvider drivenAppPortsRestful.ClientFactoryProvider) *repository {
 	return &repository{
 		restfulClientFactoryProvider: restfulClientFactoryProvider,
 	}

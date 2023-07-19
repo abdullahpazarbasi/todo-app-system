@@ -1,8 +1,6 @@
 package driven_app_ports_restful
 
-import (
-	"time"
-)
+import "time"
 
 type Request interface {
 	SentAt() *time.Time

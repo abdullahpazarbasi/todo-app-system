@@ -10,7 +10,7 @@ type Response interface {
 	StatusCode() int
 	Status() string
 	IsStatusSuccess() bool
-	IsStatusFail() bool
+	IsStatusError() bool
 	Header() *map[string][]string
 	Cookies() *[]Cookie
 	RawBody() io.ReadCloser

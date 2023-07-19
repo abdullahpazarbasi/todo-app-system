@@ -8,7 +8,7 @@ import (
 
 type uuidGenerator struct{}
 
-func NewUUIDGenerator() drivenAppPortsId.UUIDGenerator {
+func NewUUIDGenerator() *uuidGenerator {
 	return &uuidGenerator{}
 }
 

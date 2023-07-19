@@ -16,7 +16,7 @@ type TokenClaimHandler interface {
 
 type tokenClaimHandler struct{}
 
-func NewTokenClaimHandler() TokenClaimHandler {
+func NewTokenClaimHandler() *tokenClaimHandler {
 	return &tokenClaimHandler{}
 }
 

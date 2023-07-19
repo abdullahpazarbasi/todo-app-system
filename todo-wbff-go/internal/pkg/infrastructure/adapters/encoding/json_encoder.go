@@ -8,7 +8,7 @@ import (
 
 type jsonEncoder struct{}
 
-func NewJSONEncoder() drivenAppPortsEncoding.JSONEncoder {
+func NewJSONEncoder() *jsonEncoder {
 	return &jsonEncoder{}
 }
 

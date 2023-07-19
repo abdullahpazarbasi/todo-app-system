@@ -11,7 +11,7 @@ type HelloHandler interface {
 
 type helloHandler struct{}
 
-func NewHelloHandler() HelloHandler {
+func NewHelloHandler() *helloHandler {
 	return &helloHandler{}
 }
 

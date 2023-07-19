@@ -13,6 +13,17 @@ func extractRetrialStrategyControllerFromClientOptions(options *[]drivenAppPorts
 			remainingOptions = append(remainingOptions, option)
 		}
 	}
+	if controller == nil {
+		controller = func(lastExchange drivenAppPortsRestful.Exchange) (breaking bool) {
+			if lastExchange.Response().StatusCode() == 429 {
+				breaking = false
+				return
+			}
+
+			breaking = true
+			return
+		}
+	}
 
 	return controller, &remainingOptions
 }

@@ -1,12 +1,10 @@
 package infrastructure_adapters_restful
 
-import (
-	drivenAppPortsRestful "todo-app-wbff/internal/pkg/app/ports/driven/restful"
-)
+import drivenAppPortsRestful "todo-app-wbff/internal/pkg/app/ports/driven/restful"
 
 type clientFactory struct{}
 
-func NewClientFactory() drivenAppPortsRestful.ClientFactory {
+func NewClientFactory() *clientFactory {
 	return &clientFactory{}
 }
 

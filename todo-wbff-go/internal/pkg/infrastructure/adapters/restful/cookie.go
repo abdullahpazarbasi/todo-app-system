@@ -18,7 +18,7 @@ type cookie struct {
 	sameSite int
 }
 
-func NewCookieFromHttpCookie(httpCookie *http.Cookie) drivenAppPortsRestful.Cookie {
+func NewCookieFromHttpCookie(httpCookie *http.Cookie) *cookie {
 	return &cookie{
 		name:     httpCookie.Name,
 		value:    httpCookie.Value,

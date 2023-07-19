@@ -6,7 +6,7 @@ type clientFactoryProvider struct {
 	clientFactory drivenAppPortsRestful.ClientFactory
 }
 
-func NewClientFactoryProvider(clientFactory drivenAppPortsRestful.ClientFactory) drivenAppPortsRestful.ClientFactoryProvider {
+func NewClientFactoryProvider(clientFactory drivenAppPortsRestful.ClientFactory) *clientFactoryProvider {
 	return &clientFactoryProvider{clientFactory: clientFactory}
 }
 

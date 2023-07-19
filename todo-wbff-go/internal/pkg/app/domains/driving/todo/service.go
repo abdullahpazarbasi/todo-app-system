@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 	drivenAppDomainsTodo "todo-app-wbff/internal/pkg/app/domains/driven/todo"
+	drivingAppDomainsError "todo-app-wbff/internal/pkg/app/domains/driving/error"
+	drivingAppPortsError "todo-app-wbff/internal/pkg/app/ports/driving/error"
 	drivingAppPortsTodo "todo-app-wbff/internal/pkg/app/ports/driving/todo"
 )
 
@@ -11,13 +13,20 @@ type service struct {
 	todoRepository drivenAppDomainsTodo.Repository
 }
 
-func NewService(todoRepository drivenAppDomainsTodo.Repository) drivingAppPortsTodo.Service {
+func NewService(todoRepository drivenAppDomainsTodo.Repository) *service {
 	return &service{
 		todoRepository: todoRepository,
 	}
 }
 
-func (s *service) Add(ctx context.Context, userID string, value string) (*[]drivingAppPortsTodo.Todo, error) {
+func (s *service) Add(
+	ctx context.Context,
+	userID string,
+	value string,
+) (
+	*[]drivingAppPortsTodo.Todo,
+	drivingAppPortsError.ServiceError,
+) {
 	_, err := s.todoRepository.Add(
 		ctx,
 		NewTodoCandidate(
@@ -27,23 +36,29 @@ func (s *service) Add(ctx context.Context, userID string, value string) (*[]driv
 		),
 	)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "todo could not be added")
 	}
 	var l *[]*drivenAppDomainsTodo.TodoEntity
 	l, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "any todo could not be retrieved")
 	}
 
 	return mapTodoEntityCollectionToTodoCollection(l), nil
 }
 
-func (s *service) FindAll(ctx context.Context, userID string) (*[]drivingAppPortsTodo.Todo, error) {
+func (s *service) FindAll(
+	ctx context.Context,
+	userID string,
+) (
+	*[]drivingAppPortsTodo.Todo,
+	drivingAppPortsError.ServiceError,
+) {
 	var err error
 	var l *[]*drivenAppDomainsTodo.TodoEntity
 	l, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "any todo could not be retrieved")
 	}
 
 	return mapTodoEntityCollectionToTodoCollection(l), nil
@@ -57,11 +72,11 @@ func (s *service) Modify(
 	completedRaw string,
 ) (
 	*[]drivingAppPortsTodo.Todo,
-	error,
+	drivingAppPortsError.ServiceError,
 ) {
 	completed, err := strconv.ParseBool(completedRaw)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 400, "malformed parameter 'completed'")
 	}
 
 	err = s.todoRepository.Replace(
@@ -74,29 +89,36 @@ func (s *service) Modify(
 		),
 	)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "todo could not be replaced")
 	}
 	var l *[]*drivenAppDomainsTodo.TodoEntity
 	l, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "any todo could not be retrieved")
 	}
 
 	return mapTodoEntityCollectionToTodoCollection(l), nil
 }
 
-func (s *service) Remove(ctx context.Context, userID string, id string) (*[]drivingAppPortsTodo.Todo, error) {
+func (s *service) Remove(
+	ctx context.Context,
+	userID string,
+	id string,
+) (
+	*[]drivingAppPortsTodo.Todo,
+	drivingAppPortsError.ServiceError,
+) {
 	err := s.todoRepository.Remove(
 		ctx,
 		id,
 	)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "todo could not be removed")
 	}
 	var l *[]*drivenAppDomainsTodo.TodoEntity
 	l, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, drivingAppDomainsError.NewServiceError(err, "", 500, "any todo could not be retrieved")
 	}
 
 	return mapTodoEntityCollectionToTodoCollection(l), nil

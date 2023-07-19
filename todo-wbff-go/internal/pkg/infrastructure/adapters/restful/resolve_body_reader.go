@@ -12,6 +12,8 @@ import (
 
 func resolveBodyReader(body interface{}) io.Reader {
 	switch b := body.(type) {
+	case nil:
+		return nil
 	case io.Reader:
 		return b
 	case string:

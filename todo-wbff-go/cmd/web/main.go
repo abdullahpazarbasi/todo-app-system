@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
+	"strconv"
 	drivenAppDomainsRestful "todo-app-wbff/internal/pkg/app/domains/driven/restful"
 	drivenAppDomainsTodo "todo-app-wbff/internal/pkg/app/domains/driven/todo"
 	drivingAppDomainsTodo "todo-app-wbff/internal/pkg/app/domains/driving/todo"
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	var err error
 	ctx := context.Background()
 
 	eva := infrastructureAdaptersOs.NewEnvironmentVariableAccessor("configs/.env")
@@ -23,8 +25,12 @@ func main() {
 
 	// Echo instance
 	e := echo.New()
+	e.Debug, err = strconv.ParseBool(eva.Get("APP_DEBUG", "false"))
+	if err != nil {
+		log.Fatalf("malformed APP_DEBUG: %v", e)
+	}
 
-	err := clientInterfaceAdaptersRestApiRegistrars.RegisterMiddlewares(e, ctx)
+	err = clientInterfaceAdaptersRestApiRegistrars.RegisterMiddlewares(e, ctx)
 	if err != nil {
 		log.Fatalf("middlewares could not be registered: %v", e)
 	}
@@ -56,5 +62,5 @@ func main() {
 	}
 
 	// Start server
-	e.Logger.Fatal(e.Start(":8081"))
+	e.Logger.Fatal(e.Start(":80"))
 }

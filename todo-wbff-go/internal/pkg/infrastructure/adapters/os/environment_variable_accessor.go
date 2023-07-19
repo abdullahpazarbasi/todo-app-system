@@ -15,7 +15,7 @@ type environmentVariableAccessor struct {
 	dotEnvFileLoaderWrapper sync.Once
 }
 
-func NewEnvironmentVariableAccessor(dotEnvFilePath string) drivenAppPortsOs.EnvironmentVariableAccessor {
+func NewEnvironmentVariableAccessor(dotEnvFilePath string) *environmentVariableAccessor {
 	return &environmentVariableAccessor{
 		dotEnvFilePath: dotEnvFilePath,
 	}

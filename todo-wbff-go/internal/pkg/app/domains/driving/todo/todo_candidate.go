@@ -1,16 +1,12 @@
 package driving_app_domains_todo
 
-import (
-	appPortsTodoModels "todo-app-wbff/internal/pkg/app/ports/driving/todo"
-)
-
 type todoCandidate struct {
 	userID    string
 	label     string
 	completed bool
 }
 
-func NewTodoCandidate(userID string, label string, completed bool) appPortsTodoModels.Todo {
+func NewTodoCandidate(userID string, label string, completed bool) *todoCandidate {
 	return &todoCandidate{
 		userID:    userID,
 		label:     label,

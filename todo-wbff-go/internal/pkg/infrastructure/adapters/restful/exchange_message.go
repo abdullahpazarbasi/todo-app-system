@@ -31,13 +31,16 @@ func exchangeMessage(
 ) {
 	var err error
 	ec := exchange{
+		cookies:  &[]drivenAppPortsRestful.Cookie{},
 		previous: previousExchange,
 	}
 	rq := request{}
 	ec.request = &rq
+	rs := response{}
+	ec.response = &rs
 	rq.raw, err = http.NewRequestWithContext(ctx, method, resourceURL, body)
 	if err != nil {
-		return nil, err
+		return &ec, err
 	}
 	rq.raw.Header = *header
 	host := rq.raw.Header.Get("Host")
@@ -66,16 +69,16 @@ func exchangeMessage(
 		Jar:     cookieJar,
 		Timeout: timeOutLimit,
 	}
-	rs := response{}
-	ec.response = &rs
 	rq.sentAt = time.Now()
 	rs.raw, err = c.Do(rq.raw)
-	defer silentlyClose(rs.raw.Body)
 	rs.receivedAt = time.Now()
-	ec.cookies = convertHttpCookiesToCookies(rs.raw.Cookies())
+	if rs.raw != nil {
+		defer silentlyClose(rs.raw.Body)
+		ec.cookies = convertHttpCookiesToCookies(rs.raw.Cookies())
+	}
 	ec.elapsedTime = rs.ReceivedAt().Sub(*rq.SentAt())
 	if err != nil {
-		return nil, err
+		return &ec, err
 	}
 
 	return &ec, nil

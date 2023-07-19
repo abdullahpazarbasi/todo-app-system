@@ -9,7 +9,7 @@ import (
 
 type modelNormalizer struct{}
 
-func NewModelNormalizer() drivenAppPortsModel.ModelNormalizer {
+func NewModelNormalizer() *modelNormalizer {
 	return &modelNormalizer{}
 }
 

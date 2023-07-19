@@ -1,13 +1,11 @@
 package driven_app_domains_restful
 
-import drivenAppPortsRestful "todo-app-wbff/internal/pkg/app/ports/driven/restful"
-
 type resourcePathParameterOption struct {
 	placeholder string
 	value       string
 }
 
-func NewResourcePathParameterOption(placeholder, value string) drivenAppPortsRestful.ResourcePathParameterOption {
+func NewResourcePathParameterOption(placeholder, value string) *resourcePathParameterOption {
 	return &resourcePathParameterOption{
 		placeholder: placeholder,
 		value:       value,

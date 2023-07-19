@@ -3,7 +3,6 @@ package infrastructure_adapters_restful
 import (
 	"context"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"strings"
 	"time"
 	drivenAppPortsRestful "todo-app-wbff/internal/pkg/app/ports/driven/restful"
@@ -24,7 +23,6 @@ func (c *client) Post(
 	drivenAppPortsRestful.Exchange,
 	error,
 ) {
-	resty.New()
 	return c.ExchangeMessage(
 		ctx,
 		"POST",
@@ -143,8 +141,11 @@ func (c *client) ExchangeMessage(
 	redirectionPolicyController, options = extractRedirectionPolicyControllerFromClientOptions(options)
 	var retrialStrategyController func(drivenAppPortsRestful.Exchange) bool
 	retrialStrategyController, options = extractRetrialStrategyControllerFromClientOptions(options)
+	var httpErrorHandlingStrategyController func(lastExchange drivenAppPortsRestful.Exchange, cause error) drivenAppPortsRestful.Error
+	httpErrorHandlingStrategyController, options = extractHTTPErrorHandlingStrategyControllerFromClientOptions(options)
 	var ec drivenAppPortsRestful.Exchange
 	var err error
+	var lastTrial bool
 	for i := 0; i < 100; i++ {
 		select {
 		case <-ctx.Done():
@@ -162,14 +163,18 @@ func (c *client) ExchangeMessage(
 				ec,
 			)
 			if err != nil {
-				if retrialStrategyController != nil {
-					if retrialStrategyController(ec) {
-						return ec, err
-					}
-				}
+				lastTrial = retrialStrategyController(ec)
 			}
 			c.cookies = ec.Cookies()
 		}
+		if lastTrial {
+			break
+		}
+	}
+
+	e := httpErrorHandlingStrategyController(ec, err)
+	if e != nil {
+		return ec, e
 	}
 
 	return ec, err

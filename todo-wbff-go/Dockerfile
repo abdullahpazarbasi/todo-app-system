@@ -9,6 +9,6 @@ RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o /usr/local/bin/app todo-app-wbff/cmd/web
 
-EXPOSE 8081
+EXPOSE 80
 
 CMD ["app"]

@@ -7,6 +7,9 @@ import (
 
 func convertCookiesToHttpCookies(cookies *[]drivenAppPortsRestful.Cookie) []*http.Cookie {
 	httpCookies := make([]*http.Cookie, 0)
+	if cookies == nil {
+		return httpCookies
+	}
 	for _, naturalCookie := range *cookies {
 		httpCookies = append(httpCookies, NewHttpCookieFromCookie(naturalCookie))
 	}

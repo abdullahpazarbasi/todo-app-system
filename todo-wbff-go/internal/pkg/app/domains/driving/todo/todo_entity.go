@@ -1,9 +1,5 @@
 package driving_app_domains_todo
 
-import (
-	appPortsTodoModels "todo-app-wbff/internal/pkg/app/ports/driving/todo"
-)
-
 type todoEntity struct {
 	id        string
 	userID    string
@@ -11,7 +7,7 @@ type todoEntity struct {
 	completed bool
 }
 
-func NewTodoEntity(id string, userID string, label string, completed bool) appPortsTodoModels.Todo {
+func NewTodoEntity(id string, userID string, label string, completed bool) *todoEntity {
 	return &todoEntity{
 		id:        id,
 		userID:    userID,

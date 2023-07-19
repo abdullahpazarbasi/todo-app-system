@@ -20,7 +20,7 @@ type todoHandler struct {
 	todoService drivingAppPortsTodo.Service
 }
 
-func NewTodoHandler(todoService drivingAppPortsTodo.Service) TodoHandler {
+func NewTodoHandler(todoService drivingAppPortsTodo.Service) *todoHandler {
 	return &todoHandler{
 		todoService: todoService,
 	}

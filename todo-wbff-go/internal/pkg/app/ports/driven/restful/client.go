@@ -1,8 +1,6 @@
 package driven_app_ports_restful
 
-import (
-	"context"
-)
+import "context"
 
 type Client interface {
 	Post(
