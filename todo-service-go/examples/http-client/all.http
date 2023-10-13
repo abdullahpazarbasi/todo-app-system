@@ -1,0 +1,32 @@
+GET {{base_url}}/api/users/1/todos
+Accept: application/json
+
+###
+POST {{base_url}}/api/todos
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+user_id = 1 &
+label = test item
+
+###
+PUT {{base_url}}/api/todos/a629e200-eaba-44b5-ade5-b4b8cb774d76
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+user_id = 1 &
+label = test item 2
+
+###
+DELETE {{base_url}}/api/todos/a629e200-eaba-44b5-ade5-b4b8cb774d76
+Accept: application/json
+
+###
+GET {{base_url}}/
+Accept: text/plain
+
+###
+GET {{base_url}}/status
+Accept: text/plain
+
+###

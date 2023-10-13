@@ -1,0 +1,21 @@
+[ req ]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+
+[ req_distinguished_name ]
+C = TR
+ST = Istanbul
+L = Istanbul
+O = No Organization
+OU = IT Department
+CN = todo.local
+
+[ v3_req ]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = registry.todo.local
+DNS.2 = host.minikube.internal
+DNS.3 = host.docker.internal
+DNS.4 = localhost

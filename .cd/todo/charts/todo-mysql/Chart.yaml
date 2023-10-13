@@ -1,0 +1,4 @@
+apiVersion: v2
+name: todo-mysql
+version: 0.0.1
+appVersion: 8.0.34

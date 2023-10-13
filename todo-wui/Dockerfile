@@ -17,12 +17,13 @@ RUN npm run build
 
 FROM nginx:stable as server
 
-# Local files
-RUN cp /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.backup
-COPY cd/nginx/conf.d/default.nginx.conf /etc/nginx/conf.d/default.conf
+ENV HTTP_PORT 80
+ENV VITE_TODO_WBFF_BASE_URL "http://localhost"
+
+RUN mkdir -p /etc/nginx/templates && echo "server { listen \${HTTP_PORT}; root /usr/share/nginx/html; index index.html; location / { try_files \$uri \$uri/ /index.html; } location /status { access_log off; return 200 'OK'; add_header Content-Type text/plain; } error_page 500 502 503 504 /50x.html; location = /50x.html { root /usr/share/nginx/html; } }" > /etc/nginx/templates/default.conf.template
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE $HTTP_PORT
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD [ "nginx", "-g", "daemon off;" ]

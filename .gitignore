@@ -1,3 +1,7 @@
 .idea/
 .vscode/
 .vagrant
+
+/.cd/certs/*.key
+/.cd/certs/*.crt
+/.cd/certs/*.pem

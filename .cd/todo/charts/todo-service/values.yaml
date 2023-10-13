@@ -1,0 +1,28 @@
+enabled: true
+replicaCount: 1
+service:
+  port: 80
+image:
+  registry: registry.todo.local:5000
+  repository: todo-service-go
+  tag: latest
+container:
+  port: 80
+env:
+  TZ: "Europe/Istanbul"
+  APP_DEBUG: true
+  TODO_DB_HOST: "todo-mysql-s.default.svc.cluster.local"
+  TODO_DB_PORT: 3306
+  TODO_DB_USER: "project"
+  TODO_DB_PASS: "Pas5w0rd"
+  TODO_DB_NAME: "project"
+livenessProbe:
+  httpGet:
+    path: /status
+  initialDelaySeconds: 30
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /status
+  initialDelaySeconds: 15
+  periodSeconds: 10

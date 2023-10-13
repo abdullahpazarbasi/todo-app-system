@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-s
+spec:
+  selector:
+    app: {{ .Chart.Name }}-d
+  type: NodePort
+  ports:
+    - name: {{ .Chart.Name }}-sp
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Chart.Name }}-cp
+      #nodePort: 30080

@@ -1,0 +1,10 @@
+todo-mysql:
+  enabled: true
+todo-redis:
+  enabled: true
+todo-service:
+  enabled: true
+todo-wbff:
+  enabled: true
+todo-wui:
+  enabled: true

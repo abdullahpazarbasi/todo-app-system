@@ -1,0 +1,20 @@
+enabled: true
+replicaCount: 1
+service:
+  port: 6379
+image:
+  registry: registry.todo.local:5000
+  repository: todo-redis
+  tag: latest
+container:
+  port: 6379
+env:
+  TZ: "Europe/Istanbul"
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+readinessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5

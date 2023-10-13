@@ -1,0 +1,25 @@
+enabled: true
+replicaCount: 1
+service:
+  port: 3306
+image:
+  registry: docker.io
+  repository: mysql
+  tag: 8.0-debian
+  pullPolicy: IfNotPresent
+container:
+  port: 3306
+env:
+  TZ: "Europe/Istanbul"
+  MYSQL_DATABASE: "project"
+  MYSQL_ROOT_PASSWORD: "Pas5w0rd"
+  MYSQL_PASSWORD: "Pas5w0rd"
+  MYSQL_USER: "project"
+livenessProbe:
+  initialDelaySeconds: 75
+  periodSeconds: 10
+  timeoutSeconds: 5
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5

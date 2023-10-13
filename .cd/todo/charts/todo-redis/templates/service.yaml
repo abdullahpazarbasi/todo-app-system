@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-s
+spec:
+  selector:
+    app: {{ .Chart.Name }}-ss
+  clusterIP: None
+  ports:
+    - name: {{ .Chart.Name }}-sp
+      port: {{ .Values.service.port }}
+      #nodePort: 30080
