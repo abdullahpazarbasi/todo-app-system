@@ -3,25 +3,28 @@ package domain_fault
 import (
 	"fmt"
 	"net/http"
-	"todo-app-service/internal/pkg/application/core/port"
-	"todo-app-service/internal/pkg/application/domain/fault/port"
+	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 )
 
 type fault struct {
-	tipe                   domain_fault_port.FaultType
+	tipe                   domainFaultPort.FaultType
 	code                   string
 	proposedHTTPStatusCode int
 	message                string
 	cause                  error
-	callerFrames           *[]core_port.CallerFrame
+	callerFrames           *[]domainFaultPort.CallerFrame
 }
 
-func (e *fault) Type() domain_fault_port.FaultType {
+func (e *fault) Type() domainFaultPort.FaultType {
 	if e.tipe == "" {
-		return domain_fault_port.FaultTypeUnknown
+		return domainFaultPort.FaultTypeUnknown
 	}
 
 	return e.tipe
+}
+
+func (e *fault) IsInType(typeCandidate domainFaultPort.FaultType) bool {
+	return e.tipe == typeCandidate
 }
 
 func (e *fault) Code() string {
@@ -85,29 +88,27 @@ func (e *fault) Normalize(fullDetailed bool) map[string]interface{} {
 	err["proposed_http_status_code"] = e.proposedHTTPStatusCode
 	if fullDetailed {
 		err["message"] = e.message
+		callerFrames := make([]*map[string]interface{}, 0)
+		for _, cf := range *e.callerFrames {
+			callerFrames = append(callerFrames, &map[string]interface{}{
+				"stack_index":             cf.StackIndex(),
+				"caller_file_path":        cf.CallerFilePath(),
+				"call_point_line":         cf.CallPointLine(),
+				"caller_entry_point_line": cf.CallerEntryPointLine(),
+				"caller_name":             cf.CallerName(),
+			})
+		}
+		err["trace"] = callerFrames
 		if e.cause != nil {
 			var cause map[string]interface{}
 			switch c := e.cause.(type) {
-			case domain_fault_port.Fault:
+			case domainFaultPort.Fault:
 				cause = c.Normalize(fullDetailed)
 			default:
 				cause = map[string]interface{}{"message": c.Error()}
 			}
 			err["cause"] = &cause
 		}
-		callerFrames := make([]*map[string]interface{}, 0)
-		for _, cf := range *e.callerFrames {
-			callerFrames = append(callerFrames, &map[string]interface{}{
-				"stack_index":                        cf.StackIndex(),
-				"caller_file_path":                   cf.CallerFilePath(),
-				"caller_name":                        cf.CallerName(),
-				"caller_entry_point_program_counter": cf.CallerEntryPointProgramCounter(),
-				"caller_entry_point_line":            cf.CallerEntryPointLine(),
-				"call_point_program_counter":         cf.CallPointProgramCounter(),
-				"call_point_line":                    cf.CallPointLine(),
-			})
-		}
-		err["trace"] = callerFrames
 	} else {
 		if e.proposedHTTPStatusCode > 99 {
 			err["message"] = http.StatusText(e.proposedHTTPStatusCode)
@@ -119,35 +120,8 @@ func (e *fault) Normalize(fullDetailed bool) map[string]interface{} {
 	return err
 }
 
-func (e *fault) CallerFrames() *[]core_port.CallerFrame {
+func (e *fault) CallerFrames() *[]domainFaultPort.CallerFrame {
 	return e.callerFrames
-}
-
-func (e *fault) SetType(tipe domain_fault_port.FaultType) domain_fault_port.Fault {
-	if e.tipe != "" {
-		panic("fault type is already set")
-	}
-	e.tipe = tipe
-
-	return e
-}
-
-func (e *fault) SetProposedHTTPStatusCode(proposedHTTPStatusCode int) domain_fault_port.Fault {
-	if e.proposedHTTPStatusCode != 0 {
-		panic("proposed HTTP status code is already set")
-	}
-	e.proposedHTTPStatusCode = proposedHTTPStatusCode
-
-	return e
-}
-
-func (e *fault) SetMessage(message string) domain_fault_port.Fault {
-	if e.message != "" {
-		panic("message is already set")
-	}
-	e.message = message
-
-	return e
 }
 
 func (e *fault) printCallerFrames() string {

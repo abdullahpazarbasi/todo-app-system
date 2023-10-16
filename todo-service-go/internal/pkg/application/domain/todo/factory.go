@@ -47,7 +47,11 @@ func (f *factory) CreateTodoTagEntityCollectionFromKeys(
 ) *[]domainTodoPort.TodoTagEntity {
 	collection := make([]domainTodoPort.TodoTagEntity, 0)
 	for _, key := range keys {
-		collection = append(collection, f.CreateTodoTagEntity(f.idGenerator.GenerateAsString(), todoID, key))
+		collection = append(collection, &todoTagEntity{
+			id:     f.idGenerator.GenerateAsString(),
+			todoID: todoID,
+			key:    key,
+		})
 	}
 
 	return &collection

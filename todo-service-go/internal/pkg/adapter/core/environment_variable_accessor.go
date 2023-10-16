@@ -1,7 +1,6 @@
 package core_adapter
 
 import (
-	"context"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/labstack/gommon/log"
@@ -19,10 +18,6 @@ func NewEnvironmentVariableAccessor(dotEnvFilePath string) corePort.EnvironmentV
 	return &environmentVariableAccessor{
 		dotEnvFilePath: dotEnvFilePath,
 	}
-}
-
-func (eva *environmentVariableAccessor) NewContextWith(parentContext context.Context) context.Context {
-	return context.WithValue(parentContext, corePort.EnvironmentVariableAccessorKey{}, eva)
 }
 
 func (eva *environmentVariableAccessor) Get(key string, defaultValue string) string {

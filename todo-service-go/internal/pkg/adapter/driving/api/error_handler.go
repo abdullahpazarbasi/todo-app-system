@@ -3,10 +3,10 @@ package driving_adapter_api
 import (
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"todo-app-service/internal/pkg/application/domain/fault/port"
+	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 )
 
-func ErrorHandler(cause error, ec echo.Context) {
+func errorHandler(cause error, ec echo.Context) {
 	if ec.Response().Committed {
 		return
 	}
@@ -15,12 +15,12 @@ func ErrorHandler(cause error, ec echo.Context) {
 	var httpStatusCode int
 	var rs map[string]interface{}
 	switch outerError := cause.(type) {
-	case domain_fault_port.Fault:
+	case domainFaultPort.Fault:
 		httpStatusCode = outerError.ProposedHTTPStatusCode()
 		rs = outerError.Normalize(fullDetailed)
 	case *echo.HTTPError:
 		switch innerError := outerError.Message.(type) {
-		case domain_fault_port.Fault:
+		case domainFaultPort.Fault:
 			httpStatusCode = innerError.ProposedHTTPStatusCode()
 			rs = innerError.Normalize(fullDetailed)
 		default:

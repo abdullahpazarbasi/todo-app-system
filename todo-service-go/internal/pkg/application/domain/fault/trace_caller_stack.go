@@ -2,13 +2,13 @@ package domain_fault
 
 import (
 	"runtime"
-	"todo-app-service/internal/pkg/application/core/port"
+	corePort "todo-app-service/internal/pkg/application/domain/fault/port"
 )
 
-func traceCallerStack(numberOfSkippableFrames int, depth int) *[]core_port.CallerFrame {
+func traceCallerStack(numberOfSkippableFrames int, depth int) *[]corePort.CallerFrame {
 	callerProgramCounters := make([]uintptr, depth)
 	n := runtime.Callers(numberOfSkippableFrames, callerProgramCounters)
-	stack := make([]core_port.CallerFrame, 0)
+	stack := make([]corePort.CallerFrame, 0)
 	if n > 0 {
 		var i int
 		var k int
@@ -30,13 +30,11 @@ func traceCallerStack(numberOfSkippableFrames int, depth int) *[]core_port.Calle
 			stack = append(
 				stack,
 				&callerFrame{
-					stackIndex:                     k,
-					callerFilePath:                 callerFilePath,
-					callerName:                     callPointFunc.Name(),
-					callerEntryPointProgramCounter: callerEntryPointProgramCounter,
-					callerEntryPointLine:           callerEntryPointLine,
-					callPointProgramCounter:        callPointProgramCounter,
-					callPointLine:                  callPointLine,
+					stackIndex:           k,
+					callerFilePath:       callerFilePath,
+					callPointLine:        callPointLine,
+					callerEntryPointLine: callerEntryPointLine,
+					callerName:           callPointFunc.Name(),
 				},
 			)
 		}

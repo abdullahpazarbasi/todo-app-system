@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"todo-app-service/configs"
 	coreAdapter "todo-app-service/internal/pkg/adapter/core"
 	drivenAdapterDb "todo-app-service/internal/pkg/adapter/driven/db"
 	drivingAdapterApi "todo-app-service/internal/pkg/adapter/driving/api"
@@ -16,16 +17,15 @@ import (
 func main() {
 	ctx := context.Background()
 
-	eva := coreAdapter.NewEnvironmentVariableAccessor("configs/.env")
-	ctx = eva.NewContextWith(ctx)
+	environmentVariableAccessor := coreAdapter.NewEnvironmentVariableAccessor("configs/.env")
 	idGenerator := coreAdapter.NewUUIDGenerator()
-	ctx = idGenerator.NewContextWith(ctx)
 
 	// Echo instance
 	e := echo.New()
 
 	drivingAdapterApi.RegisterMiddlewares(
 		e,
+		environmentVariableAccessor,
 		ctx,
 	)
 	drivingAdapterApi.RegisterStaticAPI(
@@ -33,7 +33,7 @@ func main() {
 		drivingAdapterApi.NewHelloHandler(),
 	)
 
-	todoDatabase, err := drivenAdapterDb.ConfigureDB(eva)
+	todoDatabase, err := drivenAdapterDb.ConfigureDB(environmentVariableAccessor)
 	if err != nil {
 		e.Logger.Fatal(err)
 	}
@@ -47,10 +47,14 @@ func main() {
 	}()
 
 	todoFactory := domainTodo.NewFactory(idGenerator)
-	faultFactory := domainFault.NewFactory()
+	faultFactory := domainFault.NewFactory(
+		environmentVariableAccessor,
+		configs.EnvironmentVariableNameAppDebug,
+	)
 	todoService := usecase.NewTodoService(
 		todoFactory,
 		faultFactory,
+		idGenerator,
 		drivenAdapterDb.NewRepository(
 			todoDatabase,
 			todoFactory,
@@ -68,5 +72,5 @@ func main() {
 	)
 
 	// Start server
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", eva.Get("HTTP_PORT", "80"))))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", environmentVariableAccessor.Get(configs.EnvironmentVariableNameHTTPPort, "80"))))
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	drivingAdapterApiViews "todo-app-service/internal/pkg/adapter/driving/api/views"
+	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
 	usecasePort "todo-app-service/internal/pkg/application/usecase/port"
 )
@@ -53,10 +54,11 @@ func (h *todoHandler) Post(ec echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
+	var flt domainFaultPort.Fault
 	var id string
-	id, err = h.todoService.Add(ec.Request().Context(), userID, label, tagKeys)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	id, flt = h.todoService.Add(ec.Request().Context(), userID, label, tagKeys)
+	if flt != nil {
+		return flt
 	}
 
 	view := drivingAdapterApiViews.IDContainer{
@@ -67,20 +69,19 @@ func (h *todoHandler) Post(ec echo.Context) error {
 }
 
 func (h *todoHandler) GetCollectionOfUser(ec echo.Context) error {
-	var err error
-
 	userID := ec.Param("id")
 	if userID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "user ID must be given")
 	}
 
+	var flt domainFaultPort.Fault
 	var todoCollection *[]domainTodoPort.TodoEntity
-	todoCollection, err = h.todoService.FindAllForUser(ec.Request().Context(), userID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	todoCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), userID)
+	if flt != nil {
+		return flt
 	}
 
-	view, numberOfTodos := mapTodoCollectionToView(todoCollection)
+	view, numberOfTodos := mapTodoEntityCollectionToView(todoCollection)
 	if numberOfTodos > 0 {
 		return ec.JSON(http.StatusOK, view)
 	}
@@ -120,9 +121,10 @@ func (h *todoHandler) Put(ec echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	err = h.todoService.Modify(ec.Request().Context(), id, userID, label, tagKeys)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	var flt domainFaultPort.Fault
+	flt = h.todoService.Modify(ec.Request().Context(), id, userID, label, tagKeys)
+	if flt != nil {
+		return flt
 	}
 
 	return ec.JSON(http.StatusOK, &map[string]interface{}{"ok": true})
@@ -136,15 +138,21 @@ func (h *todoHandler) Delete(ec echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "ID must be given")
 	}
 
-	err = h.todoService.Remove(ec.Request().Context(), id)
-	if err != nil {
+	var flt domainFaultPort.Fault
+	flt = h.todoService.Remove(ec.Request().Context(), id)
+	if flt != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	return ec.JSON(http.StatusOK, &map[string]interface{}{"ok": true})
 }
 
-func mapTodoCollectionToView(collection *[]domainTodoPort.TodoEntity) (*drivingAdapterApiViews.TodoCollection, int) {
+func mapTodoEntityCollectionToView(
+	collection *[]domainTodoPort.TodoEntity,
+) (
+	*drivingAdapterApiViews.TodoCollection,
+	int,
+) {
 	var view drivingAdapterApiViews.TodoCollection
 	var tagsView drivingAdapterApiViews.TodoTagCollection
 	numberOfTodos := 0

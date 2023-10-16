@@ -6,18 +6,22 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"strconv"
+	"todo-app-service/configs"
 	drivingAdapterApiMiddlewares "todo-app-service/internal/pkg/adapter/driving/api/middlewares"
-	"todo-app-service/internal/pkg/application/core"
+	corePort "todo-app-service/internal/pkg/application/core/port"
 )
 
-func RegisterMiddlewares(e *echo.Echo, parentContext context.Context) {
+func RegisterMiddlewares(
+	e *echo.Echo,
+	eva corePort.EnvironmentVariableAccessor,
+	parentContext context.Context,
+) {
 	var err error
-	eva := core.ExtractEnvironmentVariableAccessorFromContext(parentContext)
-	e.Debug, err = strconv.ParseBool(eva.Get("APP_DEBUG", "false"))
+	e.Debug, err = strconv.ParseBool(eva.Get(configs.EnvironmentVariableNameAppDebug, "false"))
 	if err != nil {
-		log.Fatalf("malformed APP_DEBUG: %v", e)
+		log.Fatalf("malformed %s: %v", configs.EnvironmentVariableNameAppDebug, e)
 	}
-	e.HTTPErrorHandler = ErrorHandler
+	e.HTTPErrorHandler = errorHandler
 	e.Use(drivingAdapterApiMiddlewares.OverrideParentContext(parentContext))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())

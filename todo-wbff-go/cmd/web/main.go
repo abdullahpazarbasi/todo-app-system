@@ -2,65 +2,63 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
-	"strconv"
-	drivenAppDomainsRestful "todo-app-wbff/internal/pkg/app/domains/driven/restful"
-	drivenAppDomainsTodo "todo-app-wbff/internal/pkg/app/domains/driven/todo"
-	drivingAppDomainsTodo "todo-app-wbff/internal/pkg/app/domains/driving/todo"
-	clientInterfaceAdaptersRestApiHandlers "todo-app-wbff/internal/pkg/client_interface/adapters/api/rest/handlers"
-	clientInterfaceAdaptersRestApiRegistrars "todo-app-wbff/internal/pkg/client_interface/adapters/api/rest/registrars"
-	infrastructureAdaptersModel "todo-app-wbff/internal/pkg/infrastructure/adapters/model"
-	infrastructureAdaptersOs "todo-app-wbff/internal/pkg/infrastructure/adapters/os"
-	infrastructureAdaptersRestful "todo-app-wbff/internal/pkg/infrastructure/adapters/restful"
+	"todo-app-wbff/configs"
+	coreAdapter "todo-app-wbff/internal/pkg/adapter/core"
+	drivenAdapterRestful "todo-app-wbff/internal/pkg/adapter/driven/restful"
+	drivenAdapterTodo "todo-app-wbff/internal/pkg/adapter/driven/todo"
+	drivingAdapterApi "todo-app-wbff/internal/pkg/adapter/driving/api"
+	domainFault "todo-app-wbff/internal/pkg/application/domain/fault"
+	domainTodo "todo-app-wbff/internal/pkg/application/domain/todo"
+	"todo-app-wbff/internal/pkg/application/usecase"
 )
 
 func main() {
-	var err error
 	ctx := context.Background()
 
-	eva := infrastructureAdaptersOs.NewEnvironmentVariableAccessor("configs/.env")
-	ctx = eva.NewContextWith(ctx)
-	ctx = infrastructureAdaptersModel.NewModelNormalizer().NewContextWith(ctx)
+	environmentVariableAccessor := coreAdapter.NewEnvironmentVariableAccessor("configs/.env")
 
 	// Echo instance
 	e := echo.New()
-	e.Debug, err = strconv.ParseBool(eva.Get("APP_DEBUG", "false"))
-	if err != nil {
-		log.Fatalf("malformed APP_DEBUG: %v", e)
-	}
 
-	err = clientInterfaceAdaptersRestApiRegistrars.RegisterMiddlewares(e, ctx)
-	if err != nil {
-		log.Fatalf("middlewares could not be registered: %v", e)
-	}
-
-	helloHandler := clientInterfaceAdaptersRestApiHandlers.NewHelloHandler()
-	err = clientInterfaceAdaptersRestApiRegistrars.RegisterStaticAPI(e, helloHandler)
-	if err != nil {
-		log.Fatalf("static API component could not be registered: %v", e)
-	}
-
-	tokenClaimHandler := clientInterfaceAdaptersRestApiHandlers.NewTokenClaimHandler()
-	err = clientInterfaceAdaptersRestApiRegistrars.RegisterAuthAPI(e, tokenClaimHandler)
-	if err != nil {
-		log.Fatalf("auth API component could not be registered: %v", e)
-	}
-
-	todoHandler := clientInterfaceAdaptersRestApiHandlers.NewTodoHandler(
-		drivingAppDomainsTodo.NewService(
-			drivenAppDomainsTodo.NewRepository(
-				drivenAppDomainsRestful.NewClientFactoryProvider(
-					infrastructureAdaptersRestful.NewClientFactory(),
+	drivingAdapterApi.RegisterMiddlewares(
+		e,
+		environmentVariableAccessor,
+		ctx,
+	)
+	drivingAdapterApi.RegisterStaticAPI(
+		e,
+		drivingAdapterApi.NewHelloHandler(),
+	)
+	faultFactory := domainFault.NewFactory(
+		environmentVariableAccessor,
+		configs.EnvironmentVariableNameAppDebug,
+	)
+	todoFactory := domainTodo.NewFactory()
+	drivingAdapterApi.RegisterAPI(
+		e,
+		environmentVariableAccessor,
+		drivingAdapterApi.NewStatusHandler(),
+		drivingAdapterApi.NewTokenClaimHandler(
+			usecase.NewAuthService(
+				faultFactory,
+				environmentVariableAccessor,
+			),
+		),
+		drivingAdapterApi.NewTodoHandler(
+			usecase.NewTodoService(
+				faultFactory,
+				todoFactory,
+				drivenAdapterTodo.NewRepository(
+					faultFactory,
+					todoFactory,
+					drivenAdapterRestful.NewClient(environmentVariableAccessor.GetOrPanic(configs.EnvironmentVariableNameTodoServiceBaseURL)),
 				),
 			),
 		),
 	)
-	err = clientInterfaceAdaptersRestApiRegistrars.RegisterTodoAPI(e, todoHandler, eva)
-	if err != nil {
-		log.Fatalf("todo API component could not be registered: %v", e)
-	}
 
 	// Start server
-	e.Logger.Fatal(e.Start(":80"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", environmentVariableAccessor.Get(configs.EnvironmentVariableNameHTTPPort, "80"))))
 }

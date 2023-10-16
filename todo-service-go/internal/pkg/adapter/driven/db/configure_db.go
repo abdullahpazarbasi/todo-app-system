@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"strconv"
 	"time"
+	"todo-app-service/configs"
 	corePort "todo-app-service/internal/pkg/application/core/port"
 )
 
@@ -14,27 +15,27 @@ func ConfigureDB(eva corePort.EnvironmentVariableAccessor) (*gorm.DB, error) {
 	var err error
 
 	var dbHost string
-	dbHost, err = eva.GetOrThrowError("TODO_DB_HOST")
+	dbHost, err = eva.GetOrThrowError(configs.EnvironmentVariableNameTodoDbHost)
 	if err != nil {
 		return nil, err
 	}
 	var dbPort int64
-	dbPort, err = strconv.ParseInt(eva.Get("TODO_DB_PORT", "3306"), 10, 32)
+	dbPort, err = strconv.ParseInt(eva.Get(configs.EnvironmentVariableNameTodoDbPort, "3306"), 10, 32)
 	if err != nil {
 		return nil, err
 	}
 	var dbUser string
-	dbUser, err = eva.GetOrThrowError("TODO_DB_USER")
+	dbUser, err = eva.GetOrThrowError(configs.EnvironmentVariableNameTodoDbUser)
 	if err != nil {
 		return nil, err
 	}
 	var dbPass string
-	dbPass, err = eva.GetOrThrowError("TODO_DB_PASS")
+	dbPass, err = eva.GetOrThrowError(configs.EnvironmentVariableNameTodoDbPass)
 	if err != nil {
 		return nil, err
 	}
 	var dbName string
-	dbName, err = eva.GetOrThrowError("TODO_DB_NAME")
+	dbName, err = eva.GetOrThrowError(configs.EnvironmentVariableNameTodoDbName)
 	if err != nil {
 		return nil, err
 	}

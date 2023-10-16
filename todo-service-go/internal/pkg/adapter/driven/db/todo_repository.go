@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 	"net"
 	"net/http"
-	domainFault "todo-app-service/internal/pkg/application/domain/fault"
 	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
 )
@@ -222,21 +221,24 @@ func (r *repository) translateGormErrorToApplicationFault(gormError error) domai
 			faultType = domainFaultPort.FaultTypeUnknown
 		}
 
-		return domainFault.NewFactory().Create(
-			err,
-			faultCode,
-			err.Message,
-		).SetType(faultType).SetProposedHTTPStatusCode(proposedHTTPStatusCode)
+		return r.faultFactory.CreateFault(
+			r.faultFactory.Cause(err),
+			r.faultFactory.Type(faultType),
+			r.faultFactory.Code(faultCode),
+			r.faultFactory.ProposedHTTPStatusCode(proposedHTTPStatusCode),
+			r.faultFactory.Message(err.Message),
+		)
 	case *net.OpError:
-		return domainFault.NewFactory().Create(
-			err,
-			"NETERR9999999999",
-			"connection error",
-		).SetType(domainFaultPort.FaultTypeConnectionFailure).SetProposedHTTPStatusCode(http.StatusServiceUnavailable)
+		return r.faultFactory.CreateFault(
+			r.faultFactory.Cause(err),
+			r.faultFactory.Type(domainFaultPort.FaultTypeConnectionFailure),
+			r.faultFactory.ProposedHTTPStatusCode(http.StatusServiceUnavailable),
+			r.faultFactory.Message("connection error"),
+		)
 	default:
-		return domainFault.NewFactory().WrapError(
+		return r.faultFactory.WrapError(
 			err,
-			"DBERR99999999999",
-		).SetMessage("database error")
+			r.faultFactory.Message("database error"),
+		)
 	}
 }

@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"todo-app-service/internal/pkg/application/core"
+	corePort "todo-app-service/internal/pkg/application/core/port"
 	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
 	usecasePort "todo-app-service/internal/pkg/application/usecase/port"
@@ -11,17 +11,20 @@ import (
 type todoService struct {
 	todoFactory    domainTodoPort.Factory
 	faultFactory   domainFaultPort.Factory
+	idGenerator    corePort.UUIDGenerator
 	todoRepository domainTodoPort.Repository
 }
 
 func NewTodoService(
 	todoFactory domainTodoPort.Factory,
 	faultFactory domainFaultPort.Factory,
+	idGenerator corePort.UUIDGenerator,
 	todoRepository domainTodoPort.Repository,
 ) usecasePort.TodoService {
 	return &todoService{
 		todoFactory:    todoFactory,
 		faultFactory:   faultFactory,
+		idGenerator:    idGenerator,
 		todoRepository: todoRepository,
 	}
 }
@@ -35,8 +38,7 @@ func (s *todoService) Add(
 	string,
 	domainFaultPort.Fault,
 ) {
-	idGenerator := core.ExtractUUIDGeneratorFromContext(ctx)
-	todoID := idGenerator.GenerateAsString()
+	todoID := s.idGenerator.GenerateAsString()
 	err := s.todoRepository.Create(
 		ctx,
 		s.todoFactory.CreateTodoEntity(
@@ -47,7 +49,7 @@ func (s *todoService) Add(
 		),
 	)
 	if err != nil {
-		return "", s.faultFactory.WrapError(err, "E891284193050778")
+		return "", s.faultFactory.WrapError(err)
 	}
 
 	return todoID, nil
@@ -64,7 +66,7 @@ func (s *todoService) FindAllForUser(
 	var collection *[]domainTodoPort.TodoEntity
 	collection, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
-		return nil, s.faultFactory.WrapError(err, "E812740732935602")
+		return nil, s.faultFactory.WrapError(err)
 	}
 
 	return collection, nil
@@ -87,7 +89,7 @@ func (s *todoService) Modify(
 		),
 	)
 	if err != nil {
-		return s.faultFactory.WrapError(err, "E712643828035880")
+		return s.faultFactory.WrapError(err)
 	}
 
 	return nil
@@ -99,7 +101,7 @@ func (s *todoService) Remove(
 ) domainFaultPort.Fault {
 	err := s.todoRepository.Delete(ctx, id)
 	if err != nil {
-		return s.faultFactory.WrapError(err, "E737283570475033")
+		return s.faultFactory.WrapError(err)
 	}
 
 	return nil
