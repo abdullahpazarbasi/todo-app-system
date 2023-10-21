@@ -12,7 +12,7 @@ func RegisterAPIs(
 	e.GET("/status", statusHandler.Get)
 	api := e.Group("/api")
 	api.POST("/todos", todoHandler.Post)
-	api.GET("/users/:id/todos", todoHandler.GetCollectionOfUser)
-	api.PUT("/todos/:id", todoHandler.Put)
-	api.DELETE("/todos/:id", todoHandler.Delete)
+	api.GET("/users/:user/todos", todoHandler.GetCollectionOfUser)
+	api.PUT("/todos/:todo", todoHandler.Put)
+	api.DELETE("/todos/:todo", todoHandler.Delete)
 }

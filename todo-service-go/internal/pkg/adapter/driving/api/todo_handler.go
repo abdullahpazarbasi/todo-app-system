@@ -3,7 +3,6 @@ package driving_adapter_api
 import (
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"net/url"
 	drivingAdapterApiViews "todo-app-service/internal/pkg/adapter/driving/api/views"
 	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
@@ -18,11 +17,16 @@ type TodoHandler interface {
 }
 
 type todoHandler struct {
+	f           domainFaultPort.Factory
 	todoService usecasePort.TodoService
 }
 
-func NewTodoHandler(todoService usecasePort.TodoService) TodoHandler {
+func NewTodoHandler(
+	faultFactory domainFaultPort.Factory,
+	todoService usecasePort.TodoService,
+) TodoHandler {
 	return &todoHandler{
+		f:           faultFactory,
 		todoService: todoService,
 	}
 }
@@ -30,59 +34,52 @@ func NewTodoHandler(todoService usecasePort.TodoService) TodoHandler {
 func (h *todoHandler) Post(ec echo.Context) error {
 	var err error
 
-	var form url.Values
-	form, err = ec.FormParams()
+	requestBody := drivingAdapterApiViews.Todo{}
+	err = ec.Bind(&requestBody)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var userID string
-	userID, err = extractFormParameterValue(form, "user_id", true)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var label string
-	label, err = extractFormParameterValue(form, "label", true)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var tagKeys []string
-	tagKeys, err = extractFormParameterValues(form, "tag", false)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return h.f.WrapError(
+			err,
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+		)
 	}
 
 	var flt domainFaultPort.Fault
-	var id string
-	id, flt = h.todoService.Add(ec.Request().Context(), userID, label, tagKeys)
+	var todoID string
+	todoID, flt = h.todoService.Add(
+		ec.Request().Context(),
+		requestBody.UserID,
+		requestBody.Label,
+		requestBody.TagCollection().Keys(),
+	)
 	if flt != nil {
 		return flt
 	}
 
 	view := drivingAdapterApiViews.IDContainer{
-		ID: id,
+		ID: todoID,
 	}
 
 	return ec.JSON(http.StatusCreated, view)
 }
 
 func (h *todoHandler) GetCollectionOfUser(ec echo.Context) error {
-	userID := ec.Param("id")
+	userID := ec.Param("user")
 	if userID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "user ID must be given")
+		return h.f.CreateFault(
+			h.f.Message("user ID must be given"),
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+		)
 	}
 
 	var flt domainFaultPort.Fault
-	var todoCollection *[]domainTodoPort.TodoEntity
-	todoCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), userID)
+	var todoEntityCollection *[]domainTodoPort.TodoEntity
+	todoEntityCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), userID)
 	if flt != nil {
 		return flt
 	}
 
-	view, numberOfTodos := mapTodoEntityCollectionToView(todoCollection)
-	if numberOfTodos > 0 {
+	view := drivingAdapterApiViews.NewTodoCollectionFromEntityCollection(todoEntityCollection)
+	if view.Size() > 0 {
 		return ec.JSON(http.StatusOK, view)
 	}
 
@@ -92,85 +89,52 @@ func (h *todoHandler) GetCollectionOfUser(ec echo.Context) error {
 func (h *todoHandler) Put(ec echo.Context) error {
 	var err error
 
-	id := ec.Param("id")
-	if id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "ID must be given")
+	todoID := ec.Param("todo")
+	if todoID == "" {
+		return h.f.CreateFault(
+			h.f.Message("todo ID must be given"),
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+		)
 	}
 
-	var form url.Values
-	form, err = ec.FormParams()
+	requestBody := drivingAdapterApiViews.Todo{}
+	err = ec.Bind(&requestBody)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var userID string
-	userID, err = extractFormParameterValue(form, "user_id", true)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var label string
-	label, err = extractFormParameterValue(form, "label", true)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	var tagKeys []string
-	tagKeys, err = extractFormParameterValues(form, "tag", false)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return h.f.WrapError(
+			err,
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+		)
 	}
 
 	var flt domainFaultPort.Fault
-	flt = h.todoService.Modify(ec.Request().Context(), id, userID, label, tagKeys)
+	flt = h.todoService.Modify(
+		ec.Request().Context(),
+		todoID,
+		requestBody.UserID,
+		requestBody.Label,
+		requestBody.TagCollection().Keys(),
+	)
 	if flt != nil {
 		return flt
 	}
 
-	return ec.JSON(http.StatusOK, &map[string]interface{}{"ok": true})
+	return ec.JSON(http.StatusOK, map[string]interface{}{"ok": true})
 }
 
 func (h *todoHandler) Delete(ec echo.Context) error {
-	var err error
-
-	id := ec.Param("id")
-	if id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "ID must be given")
+	todoID := ec.Param("todo")
+	if todoID == "" {
+		return h.f.CreateFault(
+			h.f.Message("todo ID must be given"),
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+		)
 	}
 
 	var flt domainFaultPort.Fault
-	flt = h.todoService.Remove(ec.Request().Context(), id)
+	flt = h.todoService.Remove(ec.Request().Context(), todoID)
 	if flt != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return flt
 	}
 
-	return ec.JSON(http.StatusOK, &map[string]interface{}{"ok": true})
-}
-
-func mapTodoEntityCollectionToView(
-	collection *[]domainTodoPort.TodoEntity,
-) (
-	*drivingAdapterApiViews.TodoCollection,
-	int,
-) {
-	var view drivingAdapterApiViews.TodoCollection
-	var tagsView drivingAdapterApiViews.TodoTagCollection
-	numberOfTodos := 0
-	for _, todo := range *collection {
-		tagsView = make(drivingAdapterApiViews.TodoTagCollection, 0)
-		for _, tag := range *todo.Tags() {
-			tagsView = append(tagsView, &drivingAdapterApiViews.TodoTag{
-				Key: tag.Key(),
-			})
-		}
-		view = append(view, &drivingAdapterApiViews.Todo{
-			UserID: todo.UserID(),
-			ID:     todo.ID(),
-			Label:  todo.Label(),
-			Tags:   &tagsView,
-		})
-		numberOfTodos++
-	}
-
-	return &view, numberOfTodos
+	return ec.JSON(http.StatusOK, map[string]interface{}{"ok": true})
 }

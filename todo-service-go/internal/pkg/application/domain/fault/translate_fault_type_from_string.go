@@ -8,8 +8,12 @@ var availableFaultTypes = []domainFaultPort.FaultType{
 	domainFaultPort.FaultTypeInaccessibleServer,
 	domainFaultPort.FaultTypeDatabaseNotPrivileged,
 	domainFaultPort.FaultTypeCollectionNotFound,
+	domainFaultPort.FaultTypeItemNotFound,
 	domainFaultPort.FaultTypeDuplicatedEntry,
 	domainFaultPort.FaultTypeAssociationViolation,
+	domainFaultPort.FaultTypeTimeout,
+	domainFaultPort.FaultTypeRaceCondition,
+	domainFaultPort.FaultTypeStructuralIncompatibility,
 }
 
 func translateFaultTypeFromString(faultTypeCandidate string) domainFaultPort.FaultType {
@@ -19,5 +23,5 @@ func translateFaultTypeFromString(faultTypeCandidate string) domainFaultPort.Fau
 		}
 	}
 
-	panic("unknown fault type")
+	return domainFaultPort.FaultTypeUnknown
 }

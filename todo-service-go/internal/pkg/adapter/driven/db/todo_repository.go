@@ -2,30 +2,37 @@ package driven_adapter_db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	gormClause "gorm.io/gorm/clause"
+	gormLogger "gorm.io/gorm/logger"
 	"net"
 	"net/http"
 	domainFaultPort "todo-app-service/internal/pkg/application/domain/fault/port"
 	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
+	domainUserPort "todo-app-service/internal/pkg/application/domain/user/port"
 )
 
 type repository struct {
-	db           *gorm.DB
-	todoFactory  domainTodoPort.Factory
-	faultFactory domainFaultPort.Factory
+	db          *gorm.DB
+	userFactory domainUserPort.Factory
+	todoFactory domainTodoPort.Factory
+	f           domainFaultPort.Factory
 }
 
 func NewRepository(
 	db *gorm.DB,
+	userFactory domainUserPort.Factory,
 	todoFactory domainTodoPort.Factory,
 	faultFactory domainFaultPort.Factory,
 ) domainTodoPort.Repository {
 	return &repository{
-		db:           db,
-		todoFactory:  todoFactory,
-		faultFactory: faultFactory,
+		db:          db,
+		userFactory: userFactory,
+		todoFactory: todoFactory,
+		f:           faultFactory,
 	}
 }
 
@@ -39,9 +46,15 @@ func (r *repository) Create(
 	for _, tag := range *todo.Tags() {
 		todoTagItems = append(todoTagItems, TodoTag{
 			ID:     tag.ID(),
-			TodoID: tag.TodoID(),
+			TodoID: tag.Todo().ID(),
 			Key:    tag.Key(),
 		})
+	}
+	todoItem := Todo{
+		ID:     todo.ID(),
+		UserID: todo.User().ID(),
+		Label:  todo.Label(),
+		Tags:   todoTagItems,
 	}
 
 	tx := r.db.WithContext(ctx).Begin()
@@ -56,12 +69,7 @@ func (r *repository) Create(
 
 		return flt
 	}
-	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Create(&Todo{
-		ID:     todo.ID(),
-		UserID: todo.UserID(),
-		Label:  todo.Label(),
-		Tags:   todoTagItems,
-	}).Error)
+	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Create(&todoItem).Error)
 	if flt != nil {
 		tx.WithContext(ctx).Rollback()
 
@@ -93,10 +101,14 @@ func (r *repository) FindAllForUser(
 		return nil, flt
 	}
 	var todoItems []Todo
-	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Where("user_id = ?", userID).Find(&todoItems).Error)
+	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Preload(gormClause.Associations).Where("user_id = ?", userID).Find(&todoItems).Error)
 	if flt != nil {
 		tx.WithContext(ctx).Rollback()
 
+		return nil, flt
+	}
+	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Commit().Error)
+	if flt != nil {
 		return nil, flt
 	}
 
@@ -107,13 +119,13 @@ func (r *repository) FindAllForUser(
 		for _, todoTagMap := range todoMap.Tags {
 			todoTagEntities = append(todoTagEntities, r.todoFactory.CreateTodoTagEntity(
 				todoTagMap.ID,
-				todoTagMap.TodoID,
+				nil,
 				todoTagMap.Key,
 			))
 		}
 		todoEntities = append(todoEntities, r.todoFactory.CreateTodoEntity(
 			todoMap.ID,
-			todoMap.UserID,
+			r.userFactory.CreateUserEntity(todoMap.UserID),
 			todoMap.Label,
 			&todoTagEntities,
 		))
@@ -157,11 +169,11 @@ func (r *repository) Update(
 
 		return flt
 	}
-	todoItem.UserID = todo.UserID()
+	todoItem.UserID = todo.User().ID()
 	todoItem.Label = todo.Label()
 	for _, tag := range *todo.Tags() {
 		for _, todoTagItem := range todoItem.Tags {
-			todoTagItem.TodoID = tag.TodoID()
+			todoTagItem.TodoID = tag.Todo().ID()
 			todoTagItem.Key = tag.Key()
 		}
 	}
@@ -209,7 +221,6 @@ func (r *repository) translateGormErrorToApplicationFault(gormError error) domai
 		return nil
 	case *mysql.MySQLError:
 		var exists bool
-		faultCode := fmt.Sprintf("DBERR%d", err.Number)
 		var proposedHTTPStatusCode int
 		proposedHTTPStatusCode, exists = mysqlErrorNumberToHTTPStatusCode[err.Number]
 		if !exists {
@@ -221,24 +232,32 @@ func (r *repository) translateGormErrorToApplicationFault(gormError error) domai
 			faultType = domainFaultPort.FaultTypeUnknown
 		}
 
-		return r.faultFactory.CreateFault(
-			r.faultFactory.Cause(err),
-			r.faultFactory.Type(faultType),
-			r.faultFactory.Code(faultCode),
-			r.faultFactory.ProposedHTTPStatusCode(proposedHTTPStatusCode),
-			r.faultFactory.Message(err.Message),
+		return r.f.CreateFault(
+			r.f.Cause(err),
+			r.f.Type(faultType),
+			r.f.ProposedHTTPStatusCode(proposedHTTPStatusCode),
+			r.f.Message(err.Message),
 		)
 	case *net.OpError:
-		return r.faultFactory.CreateFault(
-			r.faultFactory.Cause(err),
-			r.faultFactory.Type(domainFaultPort.FaultTypeConnectionFailure),
-			r.faultFactory.ProposedHTTPStatusCode(http.StatusServiceUnavailable),
-			r.faultFactory.Message("connection error"),
+		return r.f.CreateFault(
+			r.f.Cause(err),
+			r.f.Type(domainFaultPort.FaultTypeConnectionFailure),
+			r.f.ProposedHTTPStatusCode(http.StatusServiceUnavailable),
+			r.f.Message("connection error"),
 		)
 	default:
-		return r.faultFactory.WrapError(
+		if errors.Is(err, gormLogger.ErrRecordNotFound) {
+			return r.f.WrapError(
+				err,
+				r.f.Type(domainFaultPort.FaultTypeItemNotFound),
+				r.f.ProposedHTTPStatusCode(http.StatusNotFound),
+				r.f.Message("item not found"),
+			)
+		}
+
+		return r.f.WrapError(
 			err,
-			r.faultFactory.Message("database error"),
+			r.f.Message(fmt.Sprintf("database error %T", err)),
 		)
 	}
 }

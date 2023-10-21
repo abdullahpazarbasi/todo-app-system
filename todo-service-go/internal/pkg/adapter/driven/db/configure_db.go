@@ -41,7 +41,7 @@ func ConfigureDB(eva corePort.EnvironmentVariableAccessor) (*gorm.DB, error) {
 	}
 	var maximumNumberOfOpenConnections int64
 	maximumNumberOfOpenConnections, err = strconv.ParseInt(eva.Get(
-		"TODO_DB_MAX_OPEN_CONNECTIONS",
+		configs.EnvironmentVariableNameTodoDbMaximumNumberOfOpenConnections,
 		"100",
 	), 10, 32)
 	if err != nil {
@@ -49,7 +49,7 @@ func ConfigureDB(eva corePort.EnvironmentVariableAccessor) (*gorm.DB, error) {
 	}
 	var maximumLifetimeOfConnectionInSeconds int64
 	maximumLifetimeOfConnectionInSeconds, err = strconv.ParseInt(eva.Get(
-		"TODO_DB_MAX_LIFETIME_OF_CONNECTION",
+		configs.EnvironmentVariableNameTodoDbMaximumLifetimeOfConnectionInSeconds,
 		"3600",
 	), 10, 32)
 	if err != nil {
@@ -57,7 +57,7 @@ func ConfigureDB(eva corePort.EnvironmentVariableAccessor) (*gorm.DB, error) {
 	}
 	var maximumNumberOfIdleConnections int64
 	maximumNumberOfIdleConnections, err = strconv.ParseInt(eva.Get(
-		"TODO_DB_MAX_IDLE_CONNECTIONS",
+		configs.EnvironmentVariableNameTodoDbMaximumNumberOfIdleConnections,
 		"10",
 	), 10, 32)
 	if err != nil {
@@ -65,7 +65,7 @@ func ConfigureDB(eva corePort.EnvironmentVariableAccessor) (*gorm.DB, error) {
 	}
 	var maximumIdleTimeOfConnectionInSeconds int64
 	maximumIdleTimeOfConnectionInSeconds, err = strconv.ParseInt(eva.Get(
-		"TODO_DB_MAX_IDLE_TIME_OF_CONNECTION",
+		configs.EnvironmentVariableNameTodoDbMaximumIdleTimeOfConnectionInSeconds,
 		"3600",
 	), 10, 32)
 	if err != nil {

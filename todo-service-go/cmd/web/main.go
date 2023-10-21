@@ -11,6 +11,7 @@ import (
 	drivingAdapterApi "todo-app-service/internal/pkg/adapter/driving/api"
 	domainFault "todo-app-service/internal/pkg/application/domain/fault"
 	domainTodo "todo-app-service/internal/pkg/application/domain/todo"
+	domainUser "todo-app-service/internal/pkg/application/domain/user"
 	"todo-app-service/internal/pkg/application/usecase"
 )
 
@@ -46,17 +47,20 @@ func main() {
 		_ = todoDatabaseClient.Close()
 	}()
 
+	userFactory := domainUser.NewFactory()
 	todoFactory := domainTodo.NewFactory(idGenerator)
 	faultFactory := domainFault.NewFactory(
 		environmentVariableAccessor,
 		configs.EnvironmentVariableNameAppDebug,
 	)
 	todoService := usecase.NewTodoService(
+		userFactory,
 		todoFactory,
 		faultFactory,
 		idGenerator,
 		drivenAdapterDb.NewRepository(
 			todoDatabase,
+			userFactory,
 			todoFactory,
 			faultFactory,
 		),
@@ -67,6 +71,7 @@ func main() {
 			todoDatabaseClient,
 		),
 		drivingAdapterApi.NewTodoHandler(
+			faultFactory,
 			todoService,
 		),
 	)

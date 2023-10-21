@@ -14,3 +14,7 @@ type TodoTag struct {
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;index"`
 	Todo      Todo           `gorm:"references:ID;foreignKey:TodoID"`
 }
+
+func (TodoTag) TableName() string {
+	return "todo_tag"
+}

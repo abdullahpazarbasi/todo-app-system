@@ -4,18 +4,27 @@ Accept: application/json
 ###
 POST {{base_url}}/api/todos
 Accept: application/json
-Content-Type: application/x-www-form-urlencoded
+Content-Type: application/json
 
-user_id = {{user_id}} &
-label = test item
+{
+  "user_id": "{{user_id}}",
+  "label": "test item 1",
+  "tags": [
+    {
+      "key": "COMPLETED"
+    }
+  ]
+}
 
 ###
 PUT {{base_url}}/api/todos/{{resource_id}}
 Accept: application/json
-Content-Type: application/x-www-form-urlencoded
+Content-Type: application/json
 
-user_id = {{user_id}} &
-label = test item 2
+{
+  "user_id": "{{user_id}}",
+  "label": "test item 2"
+}
 
 ###
 DELETE {{base_url}}/api/todos/{{resource_id}}
