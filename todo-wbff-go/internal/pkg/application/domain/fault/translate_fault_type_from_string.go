@@ -14,5 +14,5 @@ func translateFaultTypeFromString(faultTypeCandidate string) domainFaultPort.Fau
 		}
 	}
 
-	panic("unknown fault type")
+	return domainFaultPort.FaultTypeUnknown
 }

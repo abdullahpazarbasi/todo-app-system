@@ -47,3 +47,12 @@ func normalizeModel(sourceModel interface{}) interface{} {
 		panic(fmt.Errorf("kind of source model must be struct or slice, but %s given", sourceModelKind))
 	}
 }
+
+func resolveFieldName(f *reflect.StructField) string {
+	tagValue, tagExistence := f.Tag.Lookup("field")
+	if tagExistence && len(tagValue) > 0 {
+		return tagValue
+	}
+
+	return f.Name
+}

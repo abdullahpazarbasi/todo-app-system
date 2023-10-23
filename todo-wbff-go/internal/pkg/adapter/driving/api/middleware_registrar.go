@@ -5,7 +5,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	"net/http"
 	"strconv"
 	"todo-app-wbff/configs"
 	drivingAdapterApiMiddlewares "todo-app-wbff/internal/pkg/adapter/driving/api/middlewares"
@@ -27,7 +26,10 @@ func RegisterMiddlewares(
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete},
+		AllowOrigins: []string{
+			"http://www.todo.local",
+			"https://www.todo.local",
+		},
 		AllowCredentials: true,
 	}))
 }

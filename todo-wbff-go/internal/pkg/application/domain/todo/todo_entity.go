@@ -26,3 +26,21 @@ func (e *todoEntity) Label() string {
 func (e *todoEntity) Tags() *[]domainTodoPort.TodoTagEntity {
 	return e.tags
 }
+
+func (e *todoEntity) Normalize() map[string]interface{} {
+	normalized := make(map[string]interface{})
+	normalized["id"] = e.id
+	normalized["user_id"] = e.userID
+	normalized["label"] = e.label
+	todoTagEntityCollection := e.Tags()
+	if todoTagEntityCollection == nil {
+		return normalized
+	}
+	var todoTagMapCollection []map[string]interface{}
+	for _, se := range *todoTagEntityCollection {
+		todoTagMapCollection = append(todoTagMapCollection, se.Normalize())
+	}
+	normalized["tags"] = todoTagMapCollection
+
+	return normalized
+}

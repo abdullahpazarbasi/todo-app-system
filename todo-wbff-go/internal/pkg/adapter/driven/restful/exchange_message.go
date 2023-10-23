@@ -13,9 +13,15 @@ func exchangeMessage(
 	method string,
 	resourceURL string,
 	body io.Reader,
-	header *map[string][]string,
+	header map[string][]string,
 	cookies *[]Cookie,
 	timeOutLimit time.Duration,
+	dialerTimeoutLimit time.Duration,
+	keepAliveLifetime time.Duration,
+	idleConnectionTimeoutLimit time.Duration,
+	tlsHandshakeTimeoutLimit time.Duration,
+	expectContinueTimeoutLimit time.Duration,
+	maximumNumberOfIdleConnections int,
 	redirectionPolicyController func(
 		statusCode int,
 		targetURL string,
@@ -41,7 +47,7 @@ func exchangeMessage(
 	if err != nil {
 		return &ec, err
 	}
-	rq.raw.Header = *header
+	rq.raw.Header = header
 	host := rq.raw.Header.Get("Host")
 	if host != "" {
 		rq.raw.Host = host
@@ -49,7 +55,15 @@ func exchangeMessage(
 	cookieJar := createCookieJar()
 	cookieJar.SetCookies(rq.raw.URL, convertCookiesToHttpCookies(cookies))
 	c := http.Client{
-		Transport: createTransport(nil),
+		Transport: createTransport(
+			nil,
+			dialerTimeoutLimit,
+			keepAliveLifetime,
+			idleConnectionTimeoutLimit,
+			tlsHandshakeTimeoutLimit,
+			expectContinueTimeoutLimit,
+			maximumNumberOfIdleConnections,
+		),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if redirectionPolicyController != nil {
 				res := req.Response
@@ -72,7 +86,7 @@ func exchangeMessage(
 	rs.raw, err = c.Do(rq.raw)
 	rs.receivedAt = time.Now()
 	if rs.raw != nil {
-		defer silentlyClose(rs.raw.Body)
+		//defer silentlyClose(rs.raw.Body)
 		ec.cookies = convertHttpCookiesToCookies(rs.raw.Cookies())
 	}
 	ec.elapsedTime = rs.ReceivedAt().Sub(*rq.SentAt())

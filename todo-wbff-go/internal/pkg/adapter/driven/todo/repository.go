@@ -9,7 +9,7 @@ import (
 )
 
 type repository struct {
-	faultFactory      domainFaultPort.Factory
+	f                 domainFaultPort.Factory
 	todoFactory       domainTodoPort.Factory
 	todoServiceClient drivenAdapterRestful.Client
 }
@@ -20,7 +20,7 @@ func NewRepository(
 	todoServiceClient drivenAdapterRestful.Client,
 ) domainTodoPort.Repository {
 	return &repository{
-		faultFactory:      faultFactory,
+		f:                 faultFactory,
 		todoFactory:       todoFactory,
 		todoServiceClient: todoServiceClient,
 	}
@@ -33,7 +33,8 @@ func (r *repository) Add(ctx context.Context, todo domainTodoPort.TodoEntity) (s
 	exchange, err = r.todoServiceClient.Post(
 		ctx,
 		"/api/todos",
-		normalizeTodoEntity(todo),
+		todo.Normalize(),
+		drivenAdapterRestful.NewExtraHeaderLineOption("Content-Type", "application/json"),
 		drivenAdapterRestful.NewHTTPErrorHandlingStrategyControllerOption(r.handleHTTPError),
 	)
 	if err != nil {
@@ -43,7 +44,7 @@ func (r *repository) Add(ctx context.Context, todo domainTodoPort.TodoEntity) (s
 	var rs map[string]interface{}
 	rs, err = exchange.Response().DecodeModel()
 	if err != nil {
-		return "", err
+		return "", r.f.WrapError(err)
 	}
 
 	id, existent := rs["id"]
@@ -69,16 +70,12 @@ func (r *repository) FindAllForUser(ctx context.Context, userID string) (*[]doma
 	var rs []map[string]interface{}
 	rs, err = exchange.Response().DecodeCollection()
 	if err != nil {
-		return nil, err
+		return nil, r.f.WrapError(err)
 	}
 
-	var todoCollection []domainTodoPort.TodoEntity
-	err = denormalizeToTodoEntityCollection(&todoCollection, &rs, r.todoFactory)
-	if err != nil {
-		return nil, err
-	}
+	todoCollection := r.todoFactory.DenormalizeTodoEntityCollection(&rs)
 
-	return &todoCollection, nil
+	return todoCollection, nil
 }
 
 func (r *repository) Replace(ctx context.Context, todo domainTodoPort.TodoEntity) error {
@@ -88,8 +85,9 @@ func (r *repository) Replace(ctx context.Context, todo domainTodoPort.TodoEntity
 	_, err = r.todoServiceClient.Put(
 		ctx,
 		"/api/todos/{id}",
-		normalizeTodoEntity(todo),
+		todo.Normalize(),
 		drivenAdapterRestful.NewResourcePathParameterOption("id", id),
+		drivenAdapterRestful.NewExtraHeaderLineOption("Content-Type", "application/json"),
 		drivenAdapterRestful.NewHTTPErrorHandlingStrategyControllerOption(r.handleHTTPError),
 	)
 	if err != nil {
@@ -113,20 +111,20 @@ func (r *repository) Remove(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *repository) handleHTTPError(lastExchange drivenAdapterRestful.Exchange, cause error) error {
-	if cause != nil {
-		return nil
+func (r *repository) handleHTTPError(lastExchange drivenAdapterRestful.Exchange, exchangeError error) error {
+	if exchangeError != nil {
+		return translateHTTPErrorToFault(r.f, exchangeError)
 	}
 	lastResponse := lastExchange.Response()
 	if lastResponse.IsStatusError() {
 		responseModel, err := lastResponse.DecodeModel()
 		if err != nil {
-			return err
+			return translateHTTPErrorToFault(r.f, err)
 		}
 
-		return r.faultFactory.DenormalizeError(
-			&responseModel,
-			r.faultFactory.ProposedHTTPStatusCode(lastResponse.StatusCode()),
+		return r.f.DenormalizeError(
+			responseModel,
+			r.f.ProposedHTTPStatusCode(lastResponse.StatusCode()),
 		)
 	}
 

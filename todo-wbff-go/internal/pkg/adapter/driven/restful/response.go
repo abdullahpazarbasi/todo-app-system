@@ -14,7 +14,7 @@ type Response interface {
 	Status() string
 	IsStatusSuccess() bool
 	IsStatusError() bool
-	Header() *map[string][]string
+	Header() map[string][]string
 	Cookies() *[]Cookie
 	RawBody() io.ReadCloser
 	Body() []byte
@@ -70,12 +70,12 @@ func (r *response) IsStatusError() bool {
 	return r.raw.StatusCode > 399
 }
 
-func (r *response) Header() *map[string][]string {
+func (r *response) Header() map[string][]string {
 	if r.raw == nil {
 		return nil
 	}
 
-	return (*map[string][]string)(&r.raw.Header)
+	return r.raw.Header
 }
 
 func (r *response) Cookies() *[]Cookie {
@@ -129,40 +129,56 @@ func (r *response) ReceivedAt() *time.Time {
 }
 
 func (r *response) DecodeModel() (map[string]interface{}, error) {
-	var targetModel map[string]interface{}
+	targetModel := make(map[string]interface{})
 
 	if r.raw == nil {
-		return targetModel, fmt.Errorf("no response")
+		return nil, fmt.Errorf("no response")
+	}
+
+	if r.raw.Body == nil {
+		return nil, fmt.Errorf("no body")
 	}
 
 	b, err := io.ReadAll(r.raw.Body)
 	if err != nil {
-		return targetModel, err
+		return nil, err
+	}
+
+	if len(b) == 0 {
+		return nil, fmt.Errorf("empty body")
 	}
 
 	err = json.Unmarshal(b, &targetModel)
 	if err != nil {
-		return targetModel, err
+		return nil, err
 	}
 
 	return targetModel, nil
 }
 
 func (r *response) DecodeCollection() ([]map[string]interface{}, error) {
-	var targetCollection []map[string]interface{}
+	targetCollection := make([]map[string]interface{}, 0)
 
 	if r.raw == nil {
-		return targetCollection, fmt.Errorf("no response")
+		return nil, fmt.Errorf("no response")
+	}
+
+	if r.raw.Body == nil {
+		return targetCollection, nil
 	}
 
 	b, err := io.ReadAll(r.raw.Body)
 	if err != nil {
-		return targetCollection, err
+		return nil, err
+	}
+
+	if len(b) == 0 {
+		return targetCollection, nil
 	}
 
 	err = json.Unmarshal(b, &targetCollection)
 	if err != nil {
-		return targetCollection, err
+		return nil, err
 	}
 
 	return targetCollection, nil

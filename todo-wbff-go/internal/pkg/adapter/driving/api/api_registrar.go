@@ -25,6 +25,6 @@ func RegisterAPI(
 	api.Use(echoJWT.WithConfig(jwtConfig))
 	api.GET("/todos", todoHandler.GetCollection)
 	api.POST("/todos", todoHandler.Post)
-	api.PATCH("/todos/:id", todoHandler.Patch)
-	api.DELETE("/todos/:id", todoHandler.Delete)
+	api.PATCH("/todos/:todo", todoHandler.Patch)
+	api.DELETE("/todos/:todo", todoHandler.Delete)
 }

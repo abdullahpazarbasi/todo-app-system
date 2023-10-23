@@ -3,6 +3,7 @@ package domain_fault
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 	domainFaultPort "todo-app-wbff/internal/pkg/application/domain/fault/port"
 )
 
@@ -12,7 +13,7 @@ type fault struct {
 	proposedHTTPStatusCode int
 	message                string
 	cause                  error
-	callerFrames           *[]domainFaultPort.CallerFrame
+	callerFrames           []domainFaultPort.CallerFrame
 }
 
 func (e *fault) Type() domainFaultPort.FaultType {
@@ -88,9 +89,12 @@ func (e *fault) Normalize(fullDetailed bool) map[string]interface{} {
 	err["proposed_http_status_code"] = e.proposedHTTPStatusCode
 	if fullDetailed {
 		err["message"] = e.message
-		callerFrames := make([]*map[string]interface{}, 0)
-		for _, cf := range *e.callerFrames {
-			callerFrames = append(callerFrames, &map[string]interface{}{
+		callerFrameMapCollection := make([]map[string]interface{}, 0)
+		for _, cf := range e.callerFrames {
+			if cf == nil {
+				continue
+			}
+			callerFrameMapCollection = append(callerFrameMapCollection, map[string]interface{}{
 				"stack_index":             cf.StackIndex(),
 				"caller_file_path":        cf.CallerFilePath(),
 				"call_point_line":         cf.CallPointLine(),
@@ -98,7 +102,7 @@ func (e *fault) Normalize(fullDetailed bool) map[string]interface{} {
 				"caller_name":             cf.CallerName(),
 			})
 		}
-		err["trace"] = callerFrames
+		err["trace"] = callerFrameMapCollection
 		if e.cause != nil {
 			var cause map[string]interface{}
 			switch c := e.cause.(type) {
@@ -121,14 +125,52 @@ func (e *fault) Normalize(fullDetailed bool) map[string]interface{} {
 }
 
 func (e *fault) CallerFrames() *[]domainFaultPort.CallerFrame {
-	return e.callerFrames
+	return &e.callerFrames
+}
+
+func (e *fault) traceCallerStack(numberOfSkippableFrames int, depth int) {
+	callerProgramCounters := make([]uintptr, depth)
+	n := runtime.Callers(numberOfSkippableFrames, callerProgramCounters)
+	if n > 0 {
+		var i int
+		var k int
+		var callPointProgramCounter uintptr
+		var callerEntryPointProgramCounter uintptr
+		var callPointFunc *runtime.Func
+		var entryPointFunc *runtime.Func
+		var callerFilePath string
+		var callPointLine int
+		var callerEntryPointLine int
+		for i, k = 0, n; i < n; i++ {
+			k--
+			callPointProgramCounter = callerProgramCounters[i]
+			callPointFunc = runtime.FuncForPC(callPointProgramCounter)
+			callerEntryPointProgramCounter = callPointFunc.Entry()
+			entryPointFunc = runtime.FuncForPC(callerEntryPointProgramCounter)
+			callerFilePath, callPointLine = callPointFunc.FileLine(callPointProgramCounter)
+			_, callerEntryPointLine = entryPointFunc.FileLine(callerEntryPointProgramCounter)
+			e.callerFrames[i] = &callerFrame{
+				stackIndex:           k,
+				callerFilePath:       callerFilePath,
+				callPointLine:        callPointLine,
+				callerEntryPointLine: callerEntryPointLine,
+				callerName:           callPointFunc.Name(),
+			}
+		}
+		e.callerFrames = e.callerFrames[:n]
+	}
 }
 
 func (e *fault) printCallerFrames() string {
 	var o string
-	for i, cf := range *e.callerFrames {
-		if i > 0 {
+	first := true
+	for _, cf := range e.callerFrames {
+		if cf == nil {
+			continue
+		}
+		if first {
 			o = fmt.Sprintf("%s, ", o)
+			first = false
 		}
 		o = fmt.Sprintf(
 			"%si:%d crfp:%s cpl:%d crn:%s crepl:%d",

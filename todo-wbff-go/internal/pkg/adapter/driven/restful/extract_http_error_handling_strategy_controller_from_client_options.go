@@ -7,7 +7,7 @@ import (
 func extractHTTPErrorHandlingStrategyControllerFromClientOptions(
 	options *[]ClientOption,
 ) (
-	func(lastExchange Exchange, cause error) error,
+	func(lastExchange Exchange, exchangeError error) error,
 	*[]ClientOption,
 ) {
 	var controller func(lastExchange Exchange, cause error) error
@@ -21,8 +21,8 @@ func extractHTTPErrorHandlingStrategyControllerFromClientOptions(
 		}
 	}
 	if controller == nil {
-		controller = func(lastExchange Exchange, cause error) error {
-			if cause != nil {
+		controller = func(lastExchange Exchange, exchangeError error) error {
+			if exchangeError != nil {
 				return nil
 			}
 			lastResponse := lastExchange.Response()

@@ -47,6 +47,7 @@ func main() {
 			),
 		),
 		drivingAdapterApi.NewTodoHandler(
+			faultFactory,
 			usecase.NewTodoService(
 				faultFactory,
 				todoFactory,

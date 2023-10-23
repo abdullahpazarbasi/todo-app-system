@@ -14,8 +14,8 @@ func denormalizeModel(targetModelReference interface{}, sourceModelReference int
 
 	var sourceModel interface{}
 	switch smr := sourceModelReference.(type) {
-	case *map[string]interface{}:
-		sourceModel = *smr
+	case map[string]interface{}:
+		sourceModel = smr
 	case *[]interface{}:
 		sourceModel = *smr
 	default:
@@ -68,4 +68,19 @@ func denormalizeModel(targetModelReference interface{}, sourceModelReference int
 	}
 
 	return nil
+}
+
+func findField(model reflect.Value, fieldName string) (reflect.Value, bool) {
+	var modelField reflect.StructField
+	var fallback reflect.Value
+	for i := 0; i < model.NumField(); i++ {
+		modelField = model.Type().Field(i)
+		if modelField.Tag.Get("field") == fieldName {
+			return model.Field(i), true
+		} else if modelField.Name == fieldName {
+			fallback = model.Field(i)
+		}
+	}
+
+	return fallback, fallback.IsValid()
 }

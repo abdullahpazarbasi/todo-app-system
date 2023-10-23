@@ -11,4 +11,4 @@ spec:
       protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: {{ .Chart.Name }}-cp
-      #nodePort: 30080
+      nodePort: 30081

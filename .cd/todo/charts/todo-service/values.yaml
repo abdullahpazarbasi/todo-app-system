@@ -10,7 +10,7 @@ container:
   port: 80
 env:
   TZ: "Europe/Istanbul"
-  APP_DEBUG: true
+  APP_DEBUG: "true"
   TODO_DB_HOST: "todo-mysql-s.default.svc.cluster.local"
   TODO_DB_PORT: 3306
   TODO_DB_USER: "project"

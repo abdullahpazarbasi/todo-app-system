@@ -5,7 +5,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func resolveUserID(ec echo.Context) (string, error) {
+func resolveTokenUserID(ec echo.Context) (string, error) {
 	user := ec.Get("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 

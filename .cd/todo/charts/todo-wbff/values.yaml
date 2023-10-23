@@ -10,7 +10,7 @@ container:
   port: 80
 env:
   TZ: "Europe/Istanbul"
-  APP_DEBUG: true
+  APP_DEBUG: "true"
   TOKEN_SIGNING_KEY: "secret"
   TODO_SERVICE_BASE_URL: "http://todo-service-s.default.svc.cluster.local"
 ingress:

@@ -6,12 +6,12 @@ import (
 	"strings"
 )
 
-func applyPathParametersToURL(urlPattern string, pathParameters *map[string]string) string {
+func applyPathParametersToURL(urlPattern string, pathParameters map[string]string) string {
 	newURL := urlPattern
 	if pathParameters == nil {
 		return newURL
 	}
-	for p, v := range *pathParameters {
+	for p, v := range pathParameters {
 		newURL = strings.Replace(newURL, fmt.Sprintf("{%s}", p), url.PathEscape(v), -1)
 	}
 

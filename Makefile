@@ -10,7 +10,9 @@ undeploy:
 	sh .cd/undeploy.sh
 dash:
 	minikube dashboard
-delete:
+purge:
 	sh .cd/down.sh && minikube delete
 port-forward-todo-mysql:
-	kubectl port-forward pods/todo-mysql-ss-0 3306:3306
+	kubectl port-forward svc/todo-mysql-s 3306:3306
+port-forward-todo-service:
+	kubectl port-forward svc/todo-service-s 30083:80

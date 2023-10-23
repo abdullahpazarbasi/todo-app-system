@@ -75,7 +75,7 @@ func (c *client) Post(
 	Exchange,
 	error,
 ) {
-	return c.ExchangeMessage(
+	return c.exchangeMessage(
 		ctx,
 		"POST",
 		resourcePathPattern,
@@ -94,7 +94,7 @@ func (c *client) Get(
 	Exchange,
 	error,
 ) {
-	return c.ExchangeMessage(
+	return c.exchangeMessage(
 		ctx,
 		"GET",
 		resourcePathPattern,
@@ -113,7 +113,7 @@ func (c *client) Put(
 	Exchange,
 	error,
 ) {
-	return c.ExchangeMessage(
+	return c.exchangeMessage(
 		ctx,
 		"PUT",
 		resourcePathPattern,
@@ -132,7 +132,7 @@ func (c *client) Patch(
 	Exchange,
 	error,
 ) {
-	return c.ExchangeMessage(
+	return c.exchangeMessage(
 		ctx,
 		"PATCH",
 		resourcePathPattern,
@@ -150,7 +150,7 @@ func (c *client) Delete(
 	Exchange,
 	error,
 ) {
-	return c.ExchangeMessage(
+	return c.exchangeMessage(
 		ctx,
 		"DELETE",
 		resourcePathPattern,
@@ -160,7 +160,7 @@ func (c *client) Delete(
 	)
 }
 
-func (c *client) ExchangeMessage(
+func (c *client) exchangeMessage(
 	ctx context.Context,
 	method string,
 	resourcePathPattern string,
@@ -176,28 +176,28 @@ func (c *client) ExchangeMessage(
 		strings.TrimRight(c.serverBaseURL, "/"),
 		strings.TrimLeft(resourcePathPattern, "/"),
 	)
-	var pathParameters *map[string]string
+	var pathParameters map[string]string
 	pathParameters, options = extractPathParametersFromClientOptions(options)
 	var resourceURL string
 	resourceURL = applyPathParametersToURL(resourceURLPattern, pathParameters)
 	resourceURL = applyQueryParametersToURL(resourceURL, queryParameters)
-	var header *map[string][]string
+	var header map[string][]string
 	header, options = extractHeaderFromClientOptions(options)
 	var additionalCookies *[]Cookie
 	additionalCookies, options = extractCookiesFromClientOptions(options)
 	c.appendCookies(additionalCookies)
 	bodyReader := resolveBodyReader(stateRepresentation)
 	var timeOutLimit time.Duration
-	timeOutLimit, options = extractTimeOutLimitFromClientOptions(options)
+	timeOutLimit, options = extractTimeOutLimitFromClientOptions(options, time.Minute)
 	var redirectionPolicyController func(int, string, map[string][]string) bool
 	redirectionPolicyController, options = extractRedirectionPolicyControllerFromClientOptions(options)
 	var retrialStrategyController func(Exchange) bool
 	retrialStrategyController, options = extractRetrialStrategyControllerFromClientOptions(options)
-	var httpErrorHandlingStrategyController func(lastExchange Exchange, cause error) error
+	var httpErrorHandlingStrategyController func(Exchange, error) error
 	httpErrorHandlingStrategyController, options = extractHTTPErrorHandlingStrategyControllerFromClientOptions(options)
 	var xchng Exchange
 	var err error
-	var lastTrial bool
+	var wasLastTrial bool
 	for i := 0; i < 100; i++ {
 		select {
 		case <-ctx.Done():
@@ -211,15 +211,23 @@ func (c *client) ExchangeMessage(
 				header,
 				c.cookies,
 				timeOutLimit,
+				30*time.Second,
+				15*time.Second,
+				90*time.Second,
+				10*time.Second,
+				1*time.Second,
+				100,
 				redirectionPolicyController,
 				xchng,
 			)
-			if err != nil {
-				lastTrial = retrialStrategyController(xchng)
+			if err == nil {
+				wasLastTrial = true
+			} else {
+				wasLastTrial = retrialStrategyController(xchng)
 			}
 			c.cookies = xchng.Cookies()
 		}
-		if lastTrial {
+		if wasLastTrial {
 			break
 		}
 	}

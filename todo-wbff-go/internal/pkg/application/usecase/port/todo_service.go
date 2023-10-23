@@ -25,7 +25,6 @@ type TodoService interface {
 		ctx context.Context,
 		userID string,
 		id string,
-		value string,
 		completedRaw string,
 	) (
 		*[]Todo,

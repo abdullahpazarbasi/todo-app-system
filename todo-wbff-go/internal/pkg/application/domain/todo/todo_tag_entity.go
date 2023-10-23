@@ -12,3 +12,11 @@ func (e *todoTagEntity) ID() string {
 func (e *todoTagEntity) Key() string {
 	return e.key
 }
+
+func (e *todoTagEntity) Normalize() map[string]interface{} {
+	normalized := make(map[string]interface{})
+	normalized["id"] = e.id
+	normalized["key"] = e.key
+
+	return normalized
+}

@@ -77,23 +77,31 @@ func (s *todoService) Modify(
 	ctx context.Context,
 	userID string,
 	id string,
-	value string,
 	completedRaw string,
 ) (
 	*[]usecasePort.Todo,
 	domainFaultPort.Fault,
 ) {
-	completed, err := strconv.ParseBool(completedRaw)
-	if err != nil {
-		return nil, s.faultFactory.CreateFault(
-			s.faultFactory.Cause(err),
-			s.faultFactory.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.faultFactory.Message("malformed parameter 'completed'"),
-		)
-	}
+	var err error
+
 	var todoTagEntityCollection *[]domainTodoPort.TodoTagEntity
-	if completed {
-		todoTagEntityCollection = s.todoFactory.CreateTodoTagEntityCollectionFromKeySlice([]string{"COMPLETED"})
+	if completedRaw != "" {
+		var completed bool
+		completed, err = strconv.ParseBool(completedRaw)
+		if err != nil {
+			return nil, s.faultFactory.CreateFault(
+				s.faultFactory.Cause(err),
+				s.faultFactory.ProposedHTTPStatusCode(http.StatusBadRequest),
+				s.faultFactory.Message("malformed parameter 'completed'"),
+			)
+		}
+		var keys []string
+		if completed {
+			keys = []string{"COMPLETED"}
+		} else {
+			keys = []string{"-COMPLETED"}
+		}
+		todoTagEntityCollection = s.todoFactory.CreateTodoTagEntityCollectionFromKeySlice(keys)
 	}
 
 	err = s.todoRepository.Replace(
@@ -101,7 +109,7 @@ func (s *todoService) Modify(
 		s.todoFactory.CreateTodoEntity(
 			id,
 			userID,
-			value,
+			"",
 			todoTagEntityCollection,
 		),
 	)

@@ -1,6 +1,7 @@
 package domain_fault
 
 import (
+	"net/http"
 	"strconv"
 	corePort "todo-app-wbff/internal/pkg/application/core/port"
 	domainFaultPort "todo-app-wbff/internal/pkg/application/domain/fault/port"
@@ -27,7 +28,7 @@ func NewFactory(
 func (f *factory) CreateFault(options ...domainFaultPort.FaultOption) domainFaultPort.Fault {
 	flt := f.createFault(&options)
 	if f.isDebugModeOn() {
-		flt.callerFrames = traceCallerStack(numberOfSkippableFrames, depth)
+		flt.traceCallerStack(numberOfSkippableFrames, depth)
 	}
 
 	return flt
@@ -39,13 +40,17 @@ func (f *factory) WrapError(err error, options ...domainFaultPort.FaultOption) d
 		return e
 	default:
 		options = append(options, f.Cause(err))
+		flt := f.createFault(&options)
+		if f.isDebugModeOn() {
+			flt.traceCallerStack(numberOfSkippableFrames, depth)
+		}
 
-		return f.createFault(&options)
+		return flt
 	}
 }
 
-func (f *factory) DenormalizeError(normalized *map[string]interface{}, options ...domainFaultPort.FaultOption) domainFaultPort.Fault {
-	return f.denormalizeError(*normalized, &options)
+func (f *factory) DenormalizeError(normalized map[string]interface{}, options ...domainFaultPort.FaultOption) domainFaultPort.Fault {
+	return f.denormalizeError(normalized, &options)
 }
 
 func (f *factory) Cause(cause error) domainFaultPort.FaultCauseOption {
@@ -120,8 +125,8 @@ func (f *factory) denormalizeError(
 	var proposedHTTPStatusCodeCandidate interface{}
 	proposedHTTPStatusCodeCandidate, existent = normalized["proposed_http_status_code"]
 	if existent {
-		var proposedHTTPStatusCodeRaw int64
-		proposedHTTPStatusCodeRaw, fit = proposedHTTPStatusCodeCandidate.(int64)
+		var proposedHTTPStatusCodeRaw float64
+		proposedHTTPStatusCodeRaw, fit = proposedHTTPStatusCodeCandidate.(float64)
 		if !fit {
 			panic("malformed HTTP status code")
 		}
@@ -137,7 +142,12 @@ func (f *factory) denormalizeError(
 			panic("malformed HTTP error cause")
 		}
 		subOptions := make([]domainFaultPort.FaultOption, 0)
-		*options = append(*options, f.Cause(f.denormalizeError(subCause, &subOptions)))
+		*options = append(
+			*options,
+			f.Cause(
+				f.denormalizeError(subCause, &subOptions),
+			),
+		)
 	}
 
 	flt := f.createFault(options)
@@ -145,29 +155,34 @@ func (f *factory) denormalizeError(
 	var traceCandidate interface{}
 	traceCandidate, existent = normalized["trace"]
 	if existent {
-		var traceRaw []map[string]interface{}
-		traceRaw, fit = traceCandidate.([]map[string]interface{})
+		var traceRaw []interface{}
+		traceRaw, fit = traceCandidate.([]interface{})
 		if !fit {
 			panic("malformed trace")
 		}
-		callerFrames := make([]domainFaultPort.CallerFrame, 0)
-		var currentCallerFrame callerFrame
 		var stackIndexCandidate interface{}
 		var callerFilePathCandidate interface{}
 		var callPointLineCandidate interface{}
 		var callerEntryPointLineCandidate interface{}
 		var callerNameCandidate interface{}
-		var stackIndexRaw int64
+		var stackIndexRaw float64
 		var callerFilePath string
-		var callPointLineRaw int64
-		var callerEntryPointLineRaw int64
+		var callPointLineRaw float64
+		var callerEntryPointLineRaw float64
 		var callerName string
-		for _, item := range traceRaw {
-			currentCallerFrame = callerFrame{}
+		i := 0
+		for _, itemRaw := range traceRaw {
+			var item map[string]interface{}
+			item, fit = itemRaw.(map[string]interface{})
+			if !fit {
+				panic("malformed trace item")
+			}
+
+			currentCallerFrame := callerFrame{}
 
 			stackIndexCandidate, existent = item["stack_index"]
 			if existent {
-				stackIndexRaw, fit = stackIndexCandidate.(int64)
+				stackIndexRaw, fit = stackIndexCandidate.(float64)
 				if !fit {
 					panic("malformed stack index")
 				}
@@ -185,7 +200,7 @@ func (f *factory) denormalizeError(
 
 			callPointLineCandidate, existent = item["call_point_line"]
 			if existent {
-				callPointLineRaw, fit = callPointLineCandidate.(int64)
+				callPointLineRaw, fit = callPointLineCandidate.(float64)
 				if !fit {
 					panic("malformed call point line")
 				}
@@ -194,7 +209,7 @@ func (f *factory) denormalizeError(
 
 			callerEntryPointLineCandidate, existent = item["caller_entry_point_line"]
 			if existent {
-				callerEntryPointLineRaw, fit = callerEntryPointLineCandidate.(int64)
+				callerEntryPointLineRaw, fit = callerEntryPointLineCandidate.(float64)
 				if !fit {
 					panic("malformed caller entry point line")
 				}
@@ -210,9 +225,10 @@ func (f *factory) denormalizeError(
 				currentCallerFrame.callerName = callerName
 			}
 
-			callerFrames = append(callerFrames, &currentCallerFrame)
+			flt.callerFrames[i] = &currentCallerFrame
+			i++
 		}
-		flt.callerFrames = &callerFrames
+		flt.callerFrames = flt.callerFrames[:i]
 	}
 
 	return flt
@@ -222,20 +238,22 @@ func (f *factory) createFault(options *[]domainFaultPort.FaultOption) *fault {
 	var tipe domainFaultPort.FaultType
 	tipe, options = extractTypeFromFaultOptions(options)
 	var message string
-	message, options = extractMessageFromFaultOptions(options, "")
+	message, options = extractMessageFromFaultOptions(options, "an error occurred")
 	var proposedHTTPStatusCode int
-	proposedHTTPStatusCode, options = extractProposedHTTPStatusCodeFromFaultOptions(options, 0)
+	proposedHTTPStatusCode, options = extractProposedHTTPStatusCodeFromFaultOptions(options, http.StatusInternalServerError)
 	var code string
 	code, options = extractCodeFromFaultOptions(options, "")
 	var cause error
 	cause, options = extractCauseFromFaultOptions(options)
 
+	callerFrames := make([]domainFaultPort.CallerFrame, depth)
 	flt := &fault{
 		tipe:                   tipe,
 		code:                   code,
 		proposedHTTPStatusCode: proposedHTTPStatusCode,
 		message:                message,
 		cause:                  cause,
+		callerFrames:           callerFrames,
 	}
 
 	return flt

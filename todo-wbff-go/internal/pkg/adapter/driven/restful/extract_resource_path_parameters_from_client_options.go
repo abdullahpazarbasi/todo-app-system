@@ -1,6 +1,6 @@
 package driven_adapter_restful
 
-func extractPathParametersFromClientOptions(options *[]ClientOption) (*map[string]string, *[]ClientOption) {
+func extractPathParametersFromClientOptions(options *[]ClientOption) (map[string]string, *[]ClientOption) {
 	pathParameters := make(map[string]string)
 	remainingOptions := make([]ClientOption, 0)
 	for _, option := range *options {
@@ -16,5 +16,5 @@ func extractPathParametersFromClientOptions(options *[]ClientOption) (*map[strin
 		}
 	}
 
-	return &pathParameters, &remainingOptions
+	return pathParameters, &remainingOptions
 }

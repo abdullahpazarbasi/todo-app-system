@@ -5,4 +5,5 @@ type TodoEntity interface {
 	UserID() string
 	Label() string
 	Tags() *[]TodoTagEntity
+	Normalize() map[string]interface{}
 }

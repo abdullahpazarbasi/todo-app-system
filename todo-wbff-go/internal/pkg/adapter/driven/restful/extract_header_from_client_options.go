@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func extractHeaderFromClientOptions(options *[]ClientOption) (*map[string][]string, *[]ClientOption) {
-	var header map[string][]string
+func extractHeaderFromClientOptions(options *[]ClientOption) (map[string][]string, *[]ClientOption) {
+	header := make(map[string][]string)
 	remainingOptions := make([]ClientOption, 0)
 	for _, option := range *options {
 		switch o := option.(type) {
@@ -37,5 +37,5 @@ func extractHeaderFromClientOptions(options *[]ClientOption) (*map[string][]stri
 		}
 	}
 
-	return &header, &remainingOptions
+	return header, &remainingOptions
 }

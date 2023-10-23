@@ -16,11 +16,16 @@ type TodoHandler interface {
 }
 
 type todoHandler struct {
+	f           domainFaultPort.Factory
 	todoService drivingAppPortsTodo.TodoService
 }
 
-func NewTodoHandler(todoService drivingAppPortsTodo.TodoService) TodoHandler {
+func NewTodoHandler(
+	faultFactory domainFaultPort.Factory,
+	todoService drivingAppPortsTodo.TodoService,
+) TodoHandler {
 	return &todoHandler{
+		f:           faultFactory,
 		todoService: todoService,
 	}
 }
@@ -28,21 +33,21 @@ func NewTodoHandler(todoService drivingAppPortsTodo.TodoService) TodoHandler {
 func (h *todoHandler) GetCollection(ec echo.Context) error {
 	var err error
 
-	var userID string
-	userID, err = resolveUserID(ec)
+	var tokenUserID string
+	tokenUserID, err = resolveTokenUserID(ec)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		return h.f.WrapError(err, h.f.ProposedHTTPStatusCode(http.StatusUnauthorized))
 	}
 
 	var flt domainFaultPort.Fault
 	var todoCollection *[]drivingAppPortsTodo.Todo
-	todoCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), userID)
+	todoCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), tokenUserID)
 	if flt != nil {
 		return flt
 	}
 
-	view, sizeOfCollection := mapTodoEntityCollectionToView(todoCollection)
-	if sizeOfCollection > 0 {
+	view := drivingAdapterApiViews.NewTodoCollectionFromModelCollection(todoCollection)
+	if view.Size() > 0 {
 		return ec.JSON(http.StatusOK, view)
 	}
 
@@ -52,26 +57,33 @@ func (h *todoHandler) GetCollection(ec echo.Context) error {
 func (h *todoHandler) Post(ec echo.Context) error {
 	var err error
 
-	var userID string
-	userID, err = resolveUserID(ec)
+	var tokenUserID string
+	tokenUserID, err = resolveTokenUserID(ec)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		return h.f.WrapError(err, h.f.ProposedHTTPStatusCode(http.StatusUnauthorized))
 	}
 
 	value := ec.FormValue("value")
 	if value == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "value must be given")
+		return h.f.CreateFault(
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			h.f.Message("value must be given"),
+		)
 	}
 
 	var flt domainFaultPort.Fault
 	var todoCollection *[]drivingAppPortsTodo.Todo
-	todoCollection, flt = h.todoService.Add(ec.Request().Context(), userID, value)
+	todoCollection, flt = h.todoService.Add(
+		ec.Request().Context(),
+		tokenUserID,
+		value,
+	)
 	if flt != nil {
 		return flt
 	}
 
-	view, sizeOfCollection := mapTodoEntityCollectionToView(todoCollection)
-	if sizeOfCollection > 0 {
+	view := drivingAdapterApiViews.NewTodoCollectionFromModelCollection(todoCollection)
+	if view.Size() > 0 {
 		return ec.JSON(http.StatusCreated, view)
 	}
 
@@ -81,32 +93,42 @@ func (h *todoHandler) Post(ec echo.Context) error {
 func (h *todoHandler) Patch(ec echo.Context) error {
 	var err error
 
-	var userID string
-	userID, err = resolveUserID(ec)
+	var tokenUserID string
+	tokenUserID, err = resolveTokenUserID(ec)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		return h.f.WrapError(err, h.f.ProposedHTTPStatusCode(http.StatusUnauthorized))
 	}
 
-	id := ec.Param("id")
-	if id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "id must be given")
+	todoID := ec.Param("todo")
+	if todoID == "" {
+		return h.f.CreateFault(
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			h.f.Message("todo ID must be given"),
+		)
 	}
 
-	value := ec.FormValue("value")
 	completedRaw := ec.FormValue("completed")
-	if value == "" && completedRaw == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "there is no change")
+	if completedRaw == "" {
+		return h.f.CreateFault(
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			h.f.Message("there is no change"),
+		)
 	}
 
 	var flt domainFaultPort.Fault
 	var todoCollection *[]drivingAppPortsTodo.Todo
-	todoCollection, flt = h.todoService.Modify(ec.Request().Context(), userID, id, value, completedRaw)
+	todoCollection, flt = h.todoService.Modify(
+		ec.Request().Context(),
+		tokenUserID,
+		todoID,
+		completedRaw,
+	)
 	if flt != nil {
 		return flt
 	}
 
-	view, sizeOfCollection := mapTodoEntityCollectionToView(todoCollection)
-	if sizeOfCollection > 0 {
+	view := drivingAdapterApiViews.NewTodoCollectionFromModelCollection(todoCollection)
+	if view.Size() > 0 {
 		return ec.JSON(http.StatusOK, view)
 	}
 
@@ -116,49 +138,35 @@ func (h *todoHandler) Patch(ec echo.Context) error {
 func (h *todoHandler) Delete(ec echo.Context) error {
 	var err error
 
-	var userID string
-	userID, err = resolveUserID(ec)
+	var tokenUserID string
+	tokenUserID, err = resolveTokenUserID(ec)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		return h.f.WrapError(err, h.f.ProposedHTTPStatusCode(http.StatusUnauthorized))
 	}
 
-	id := ec.Param("id")
-	if id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "id must be given")
+	todoID := ec.Param("todo")
+	if todoID == "" {
+		return h.f.CreateFault(
+			h.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			h.f.Message("todo ID must be given"),
+		)
 	}
 
 	var flt domainFaultPort.Fault
 	var todoCollection *[]drivingAppPortsTodo.Todo
-	todoCollection, flt = h.todoService.Remove(ec.Request().Context(), userID, id)
+	todoCollection, flt = h.todoService.Remove(
+		ec.Request().Context(),
+		tokenUserID,
+		todoID,
+	)
 	if flt != nil {
 		return flt
 	}
 
-	view, sizeOfCollection := mapTodoEntityCollectionToView(todoCollection)
-	if sizeOfCollection > 0 {
+	view := drivingAdapterApiViews.NewTodoCollectionFromModelCollection(todoCollection)
+	if view.Size() > 0 {
 		return ec.JSON(http.StatusOK, view)
 	}
 
 	return ec.NoContent(http.StatusNoContent)
-}
-
-func mapTodoEntityCollectionToView(
-	todoCollection *[]drivingAppPortsTodo.Todo,
-) (
-	*drivingAdapterApiViews.TodoCollection,
-	int,
-) {
-	sizeOfCollection := 0
-	rs := drivingAdapterApiViews.TodoCollection{}
-	for _, todo := range *todoCollection {
-		rs = append(rs, &drivingAdapterApiViews.Todo{
-			UserID:    todo.UserID(),
-			ID:        todo.ID(),
-			Value:     todo.Value(),
-			Completed: todo.IsCompleted(),
-		})
-		sizeOfCollection++
-	}
-
-	return &rs, sizeOfCollection
 }
