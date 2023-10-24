@@ -58,9 +58,9 @@ func (r *repository) Add(ctx context.Context, todo domainTodoPort.TodoEntity) (s
 func (r *repository) FindAllForUser(ctx context.Context, userID string) (*[]domainTodoPort.TodoEntity, error) {
 	exchange, err := r.todoServiceClient.Get(
 		ctx,
-		"/api/users/{id}/todos",
+		"/api/users/{user}/todos",
 		nil,
-		drivenAdapterRestful.NewResourcePathParameterOption("id", userID),
+		drivenAdapterRestful.NewResourcePathParameterOption("user", userID),
 		drivenAdapterRestful.NewHTTPErrorHandlingStrategyControllerOption(r.handleHTTPError),
 	)
 	if err != nil {
@@ -78,15 +78,15 @@ func (r *repository) FindAllForUser(ctx context.Context, userID string) (*[]doma
 	return todoCollection, nil
 }
 
-func (r *repository) Replace(ctx context.Context, todo domainTodoPort.TodoEntity) error {
+func (r *repository) Modify(ctx context.Context, todo domainTodoPort.TodoEntity) error {
 	var err error
 
 	id := todo.ID()
-	_, err = r.todoServiceClient.Put(
+	_, err = r.todoServiceClient.Patch(
 		ctx,
-		"/api/todos/{id}",
+		"/api/todos/{todo}",
 		todo.Normalize(),
-		drivenAdapterRestful.NewResourcePathParameterOption("id", id),
+		drivenAdapterRestful.NewResourcePathParameterOption("todo", id),
 		drivenAdapterRestful.NewExtraHeaderLineOption("Content-Type", "application/json"),
 		drivenAdapterRestful.NewHTTPErrorHandlingStrategyControllerOption(r.handleHTTPError),
 	)
@@ -100,8 +100,8 @@ func (r *repository) Replace(ctx context.Context, todo domainTodoPort.TodoEntity
 func (r *repository) Remove(ctx context.Context, id string) error {
 	_, err := r.todoServiceClient.Delete(
 		ctx,
-		"/api/todos/{id}",
-		drivenAdapterRestful.NewResourcePathParameterOption("id", id),
+		"/api/todos/{todo}",
+		drivenAdapterRestful.NewResourcePathParameterOption("todo", id),
 		drivenAdapterRestful.NewHTTPErrorHandlingStrategyControllerOption(r.handleHTTPError),
 	)
 	if err != nil {

@@ -20,7 +20,7 @@ type TodoService interface {
 		ctx context.Context,
 		userID string,
 	) (
-		*[]domainTodoPort.TodoEntity,
+		domainTodoPort.TodoEntityCollection,
 		domainFaultPort.Fault,
 	)
 	Modify(

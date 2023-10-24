@@ -142,7 +142,12 @@ func (f *factory) denormalizeError(
 			panic("malformed HTTP error cause")
 		}
 		subOptions := make([]domainFaultPort.FaultOption, 0)
-		*options = append(*options, f.Cause(f.denormalizeError(subCause, &subOptions)))
+		*options = append(
+			*options,
+			f.Cause(
+				f.denormalizeError(subCause, &subOptions),
+			),
+		)
 	}
 
 	flt := f.createFault(options)
@@ -155,7 +160,6 @@ func (f *factory) denormalizeError(
 		if !fit {
 			panic("malformed trace")
 		}
-		var currentCallerFrame callerFrame
 		var stackIndexCandidate interface{}
 		var callerFilePathCandidate interface{}
 		var callPointLineCandidate interface{}
@@ -166,6 +170,7 @@ func (f *factory) denormalizeError(
 		var callPointLineRaw float64
 		var callerEntryPointLineRaw float64
 		var callerName string
+		i := 0
 		for _, itemRaw := range traceRaw {
 			var item map[string]interface{}
 			item, fit = itemRaw.(map[string]interface{})
@@ -173,7 +178,7 @@ func (f *factory) denormalizeError(
 				panic("malformed trace item")
 			}
 
-			currentCallerFrame = callerFrame{}
+			currentCallerFrame := callerFrame{}
 
 			stackIndexCandidate, existent = item["stack_index"]
 			if existent {
@@ -220,8 +225,10 @@ func (f *factory) denormalizeError(
 				currentCallerFrame.callerName = callerName
 			}
 
-			*flt.callerFrames = append(*flt.callerFrames, &currentCallerFrame)
+			flt.callerFrames[i] = &currentCallerFrame
+			i++
 		}
+		flt.callerFrames = flt.callerFrames[:i]
 	}
 
 	return flt
@@ -239,14 +246,14 @@ func (f *factory) createFault(options *[]domainFaultPort.FaultOption) *fault {
 	var cause error
 	cause, options = extractCauseFromFaultOptions(options)
 
-	callerFrames := make([]domainFaultPort.CallerFrame, 0)
+	callerFrames := make([]domainFaultPort.CallerFrame, depth)
 	flt := &fault{
 		tipe:                   tipe,
 		code:                   code,
 		proposedHTTPStatusCode: proposedHTTPStatusCode,
 		message:                message,
 		cause:                  cause,
-		callerFrames:           &callerFrames,
+		callerFrames:           callerFrames,
 	}
 
 	return flt

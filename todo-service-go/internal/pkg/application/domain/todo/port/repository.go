@@ -5,8 +5,24 @@ import (
 )
 
 type Repository interface {
-	Create(ctx context.Context, todo TodoEntity) error
-	FindAllForUser(ctx context.Context, userID string) (*[]TodoEntity, error)
-	Update(ctx context.Context, todo TodoEntity) error
-	Delete(ctx context.Context, id string) error
+	Create(
+		ctx context.Context,
+		todo TodoEntity,
+	) error
+	FindAllForUser(
+		ctx context.Context,
+		userID string,
+	) (
+		TodoEntityCollection,
+		error,
+	)
+	Update(
+		ctx context.Context,
+		id string,
+		manipulate func(currentTodo TodoEntity) (newTodo TodoEntity, err error),
+	) error
+	Delete(
+		ctx context.Context,
+		id string,
+	) error
 }

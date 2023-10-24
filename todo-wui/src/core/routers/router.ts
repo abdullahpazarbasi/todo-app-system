@@ -1,5 +1,5 @@
 import {createRouter, createWebHistory} from "vue-router";
-import {decode} from "jsonwebtoken-esm";
+import {loading} from "@/core/composables/loading";
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,36 +12,14 @@ const router = createRouter({
     ],
 });
 
-router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem("token");
-    if (to.matched.some(record => record.meta.requiresAuth) && isTokenNotExistOrExpired(token)) {
-        next({name: "Login"});
-    } else {
-        next();
-    }
+router.beforeEach(() => {
+    loading.value = true;
+    console.log("loading");
 });
 
-function isTokenNotExistOrExpired(token: string | null) {
-    if (token == null || token.length == 0) {
-        return true;
-    }
-    try {
-        const decodedToken = decode(token, {json: true});
-        if (decodedToken == null) {
-            return true;
-        }
-        if (typeof decodedToken.exp != "number") {
-            return true;
-        }
+router.afterEach(() => {
+    loading.value = false;
+    console.log("loaded");
+});
 
-        const expirationDate = new Date(decodedToken.exp * 1000);
-
-        return expirationDate < new Date();
-    } catch (error) {
-        console.error("An error occurred while trying to check token:", error);
-
-        return true;
-    }
-}
-
-export default router
+export default router;

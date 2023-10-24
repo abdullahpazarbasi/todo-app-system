@@ -14,10 +14,10 @@ func (c *TodoTagCollection) Keys() []string {
 }
 
 func NewTodoTagCollectionFromEntityCollection(
-	todoTagEntityCollection *[]domainTodoPort.TodoTagEntity,
+	todoTagEntityCollection domainTodoPort.TodoTagEntityCollection,
 ) *TodoTagCollection {
 	todoTagCollection := TodoTagCollection{}
-	for _, todoTagEntity := range *todoTagEntityCollection {
+	for _, todoTagEntity := range todoTagEntityCollection.ToSlice() {
 		todoTagCollection = append(todoTagCollection, NewTodoTagFromEntity(todoTagEntity))
 	}
 

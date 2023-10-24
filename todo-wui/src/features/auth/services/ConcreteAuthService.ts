@@ -16,7 +16,7 @@ export default class ConcreteAuthService implements AuthService {
         formData.append('username', username);
         formData.append('password', password);
         const response = await this.client?.post(
-            '',
+            '/auth/token-claims',
             formData,
             {
                 headers: {

@@ -5,10 +5,10 @@ import domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/por
 type TodoCollection []*Todo
 
 func NewTodoCollectionFromEntityCollection(
-	todoEntityCollection *[]domainTodoPort.TodoEntity,
+	todoEntityCollection domainTodoPort.TodoEntityCollection,
 ) *TodoCollection {
 	todoCollection := TodoCollection{}
-	for _, todoEntity := range *todoEntityCollection {
+	for _, todoEntity := range todoEntityCollection.ToSlice() {
 		todoCollection = append(todoCollection, NewTodoFromEntity(todoEntity))
 	}
 

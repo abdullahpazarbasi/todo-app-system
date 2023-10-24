@@ -12,7 +12,7 @@ import (
 type TodoHandler interface {
 	Post(ec echo.Context) error
 	GetCollectionOfUser(ec echo.Context) error
-	Put(ec echo.Context) error
+	Patch(ec echo.Context) error
 	Delete(ec echo.Context) error
 }
 
@@ -72,7 +72,7 @@ func (h *todoHandler) GetCollectionOfUser(ec echo.Context) error {
 	}
 
 	var flt domainFaultPort.Fault
-	var todoEntityCollection *[]domainTodoPort.TodoEntity
+	var todoEntityCollection domainTodoPort.TodoEntityCollection
 	todoEntityCollection, flt = h.todoService.FindAllForUser(ec.Request().Context(), userID)
 	if flt != nil {
 		return flt
@@ -86,7 +86,7 @@ func (h *todoHandler) GetCollectionOfUser(ec echo.Context) error {
 	return ec.NoContent(http.StatusNoContent)
 }
 
-func (h *todoHandler) Put(ec echo.Context) error {
+func (h *todoHandler) Patch(ec echo.Context) error {
 	var err error
 
 	todoID := ec.Param("todo")

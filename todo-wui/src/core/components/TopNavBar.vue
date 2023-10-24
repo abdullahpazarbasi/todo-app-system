@@ -2,9 +2,11 @@
 </script>
 
 <template>
-    <header class="bg-light">
-        <nav class="navbar">
-            <slot></slot>
-        </nav>
-    </header>
+  <!-- header -->
+  <header class="bg-light">
+    <nav class="navbar">
+      <slot></slot>
+    </nav>
+  </header>
+  <!-- /header -->
 </template>

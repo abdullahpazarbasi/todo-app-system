@@ -1,11 +1,16 @@
 package domain_todo
 
-import domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
+import (
+	"time"
+	domainTodoPort "todo-app-service/internal/pkg/application/domain/todo/port"
+)
 
 type todoTagEntity struct {
-	id   string
-	todo domainTodoPort.TodoEntity
-	key  string
+	id               string
+	todo             domainTodoPort.TodoEntity
+	key              string
+	creationTime     *time.Time
+	modificationTime *time.Time
 }
 
 func (e *todoTagEntity) ID() string {
@@ -18,4 +23,12 @@ func (e *todoTagEntity) Todo() domainTodoPort.TodoEntity {
 
 func (e *todoTagEntity) Key() string {
 	return e.key
+}
+
+func (e *todoTagEntity) CreationTime() *time.Time {
+	return e.creationTime
+}
+
+func (e *todoTagEntity) ModificationTime() *time.Time {
+	return e.modificationTime
 }

@@ -3,13 +3,32 @@ import ConcreteAuthUseCase from "@/features/auth/usecases/ConcreteAuthUseCase";
 import type AuthService from "@/features/auth/services/AuthService";
 import ConcreteAuthService from "@/features/auth/services/ConcreteAuthService";
 
-import axios from "axios";
+import type {AxiosInstance} from "axios";
 import type {Router} from "vue-router";
 
-export function useAuthFeature(router: Router): AuthUseCase {
-    const httpClient = axios.create({
-        baseURL: import.meta.env.VITE_TODO_WBFF_BASE_URL + "/auth/token-claims",
-    });
+export function useAuthFeature(router: Router, httpClient: AxiosInstance): AuthUseCase {
+    httpClient.interceptors.request.use(
+        (config) => {
+            const token = localStorage.getItem('token');
+            if (token != null && token.length > 0) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+
+            return config;
+        },
+    );
+    httpClient.interceptors.response.use(
+        response => {
+            return response;
+        },
+        error => {
+            if (error.response.status === 401) {
+                return router.push({name: "Login"});
+            }
+
+            return Promise.reject(error);
+        }
+    );
     const authService: AuthService = new ConcreteAuthService(
         httpClient,
     );

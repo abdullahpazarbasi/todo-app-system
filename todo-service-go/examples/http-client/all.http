@@ -8,22 +8,22 @@ Content-Type: application/json
 
 {
   "user_id": "{{user_id}}",
-  "label": "test item 1",
-  "tags": [
-    {
-      "key": "COMPLETED"
-    }
-  ]
+  "label": "test item 1"
 }
 
 ###
-PUT {{base_url}}/api/todos/{{resource_id}}
+PATCH {{base_url}}/api/todos/{{resource_id}}
 Accept: application/json
 Content-Type: application/json
 
 {
   "user_id": "{{user_id}}",
-  "label": "test item 2"
+  "label": "test item 2",
+  "tags": [
+    {
+      "key": "COMPLETED"
+    }
+  ]
 }
 
 ###

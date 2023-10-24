@@ -6,23 +6,14 @@ import (
 )
 
 var mysqlErrorNumberToHTTPStatusCode = map[uint16]int{
-	1045: http.StatusUnauthorized, // ER_ACCESS_DENIED_ERROR
-	1130: http.StatusForbidden,    // ER_HOST_NOT_PRIVILEGED
-
-	1049: http.StatusNotFound, // ER_BAD_DB_ERROR
-	1051: http.StatusNotFound, // ER_BAD_TABLE_ERROR
-	1146: http.StatusNotFound, // ER_NO_SUCH_TABLE
+	1045: http.StatusNetworkAuthenticationRequired, // ER_ACCESS_DENIED_ERROR
+	1130: http.StatusForbidden,                     // ER_HOST_NOT_PRIVILEGED
 
 	1062: http.StatusConflict,       // ER_DUP_ENTRY
 	1205: http.StatusRequestTimeout, // ER_LOCK_WAIT_TIMEOUT
 	1213: http.StatusConflict,       // ER_LOCK_DEADLOCK
 	1451: http.StatusConflict,       // ER_ROW_IS_REFERENCED_2
 	1452: http.StatusConflict,       // ER_NO_REFERENCED_ROW_2
-
-	1054: http.StatusBadRequest, // ER_BAD_FIELD_ERROR (geçersiz sütun adı)
-	1064: http.StatusBadRequest, // ER_PARSE_ERROR (Sorgu hatası)
-	1364: http.StatusBadRequest, // ER_NO_DEFAULT_FOR_FIELD (varsayılan değer yok)
-	1406: http.StatusBadRequest, // ER_DATA_TOO_LONG
 
 	2002: http.StatusServiceUnavailable, // CR_CONNECTION_ERROR
 	2003: http.StatusServiceUnavailable, // CR_CONN_HOST_ERROR
@@ -42,6 +33,7 @@ var mysqlErrorNumberToFaultType = map[uint16]domainFaultPort.FaultType{
 	1146: domainFaultPort.FaultTypeCollectionNotFound,
 	1205: domainFaultPort.FaultTypeTimeout,
 	1213: domainFaultPort.FaultTypeRaceCondition,
+	1292: domainFaultPort.FaultTypeStructuralIncompatibility,
 	1364: domainFaultPort.FaultTypeStructuralIncompatibility,
 	1406: domainFaultPort.FaultTypeStructuralIncompatibility,
 	1451: domainFaultPort.FaultTypeAssociationViolation,

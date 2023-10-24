@@ -43,35 +43,46 @@ func (s *todoService) Add(
 	string,
 	domainFaultPort.Fault,
 ) {
-	if userID == "" {
-		return "", s.f.CreateFault(
+	var err error
+
+	var newUser domainUserPort.UserEntity
+	newUser, err = s.userFactory.CreateUserEntity(userID)
+	if err != nil {
+		return "", s.f.WrapError(
+			err,
 			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("user ID must be given"),
+			s.f.Message("invalid user"),
 		)
 	}
-	labelSize := len(label)
-	if labelSize == 0 {
-		return "", s.f.CreateFault(
-			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("label must be given"),
-		)
-	}
-	if labelSize > 100 {
-		return "", s.f.CreateFault(
-			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("length of label can not be greater than 100"),
-		)
-	}
-	user := s.userFactory.CreateUserEntity(userID)
 	todoID := s.idGenerator.GenerateAsString()
-	err := s.todoRepository.Create(
+	var newTodoTagEntityCollection domainTodoPort.TodoTagEntityCollection
+	newTodoTagEntityCollection, err = s.todoFactory.CreateTodoTagEntityCollectionFromKeys(nil, tagKeys)
+	if err != nil {
+		return "", s.f.WrapError(
+			err,
+			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			s.f.Message("invalid todo tag collection"),
+		)
+	}
+	var newTodo domainTodoPort.TodoEntity
+	newTodo, err = s.todoFactory.CreateTodoEntity(
+		todoID,
+		newUser,
+		label,
+		newTodoTagEntityCollection,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return "", s.f.WrapError(
+			err,
+			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+			s.f.Message("invalid todo"),
+		)
+	}
+	err = s.todoRepository.Create(
 		ctx,
-		s.todoFactory.CreateTodoEntity(
-			todoID,
-			user,
-			label,
-			s.todoFactory.CreateTodoTagEntityCollectionFromKeys(nil, tagKeys),
-		),
+		newTodo,
 	)
 	if err != nil {
 		return "", s.f.WrapError(err)
@@ -84,11 +95,11 @@ func (s *todoService) FindAllForUser(
 	ctx context.Context,
 	userID string,
 ) (
-	*[]domainTodoPort.TodoEntity,
+	domainTodoPort.TodoEntityCollection,
 	domainFaultPort.Fault,
 ) {
 	var err error
-	var collection *[]domainTodoPort.TodoEntity
+	var collection domainTodoPort.TodoEntityCollection
 	collection, err = s.todoRepository.FindAllForUser(ctx, userID)
 	if err != nil {
 		return nil, s.f.WrapError(err)
@@ -102,7 +113,7 @@ func (s *todoService) Modify(
 	id string,
 	userID string,
 	label string,
-	tagKeys []string,
+	tagKeysForManipulation []string,
 ) domainFaultPort.Fault {
 	if id == "" {
 		return s.f.CreateFault(
@@ -110,34 +121,75 @@ func (s *todoService) Modify(
 			s.f.Message("todo ID must be given"),
 		)
 	}
-	if userID == "" {
-		return s.f.CreateFault(
-			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("user ID must be given"),
-		)
-	}
-	labelSize := len(label)
-	if labelSize == 0 {
-		return s.f.CreateFault(
-			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("label must be given"),
-		)
-	}
-	if labelSize > 100 {
-		return s.f.CreateFault(
-			s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
-			s.f.Message("length of label can not be greater than 100"),
-		)
-	}
-	user := s.userFactory.CreateUserEntity(userID)
 	err := s.todoRepository.Update(
 		ctx,
-		s.todoFactory.CreateTodoEntity(
-			id,
-			user,
-			label,
-			s.todoFactory.CreateTodoTagEntityCollectionFromKeys(nil, tagKeys),
-		),
+		id,
+		func(currentTodo domainTodoPort.TodoEntity) (newTodo domainTodoPort.TodoEntity, err error) {
+			var newUser domainUserPort.UserEntity
+			if userID == "" {
+				newUser = currentTodo.User()
+			} else {
+				newUser, err = s.userFactory.CreateUserEntity(userID)
+				if err != nil {
+					err = s.f.WrapError(
+						err,
+						s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+						s.f.Message("invalid user"),
+					)
+					return
+				}
+			}
+			var newLabel string
+			if label == "" {
+				newLabel = currentTodo.Label()
+			} else {
+				newLabel = label
+			}
+			var newTodoTagEntityCollection domainTodoPort.TodoTagEntityCollection
+			if len(tagKeysForManipulation) == 0 {
+				newTodoTagEntityCollection = currentTodo.Tags()
+			} else {
+				newTodoTagEntityCollection, _ = s.todoFactory.CreateTodoTagEntityCollection()
+				var tagKey string
+				var removing bool
+				var newTodoTagEntity domainTodoPort.TodoTagEntity
+				for _, tagKeyForManipulation := range tagKeysForManipulation {
+					tagKey, removing = resolveOriginalKey(tagKeyForManipulation)
+					if !removing {
+						currentTodoTagEntity := currentTodo.Tags().FindByKey(tagKey)
+						if currentTodoTagEntity == nil {
+							newTodoTagEntity, err = s.todoFactory.CreateTodoTagEntity(
+								s.idGenerator.GenerateAsString(),
+								nil,
+								tagKey,
+								nil,
+								nil,
+							)
+							if err != nil {
+								err = s.f.WrapError(
+									err,
+									s.f.ProposedHTTPStatusCode(http.StatusBadRequest),
+									s.f.Message("invalid todo tag"),
+								)
+								return
+							}
+							newTodoTagEntityCollection.Append(newTodoTagEntity)
+						} else {
+							newTodoTagEntityCollection.Append(currentTodoTagEntity)
+						}
+					}
+				}
+			}
+			newTodo, err = s.todoFactory.CreateTodoEntity(
+				id,
+				newUser,
+				newLabel,
+				newTodoTagEntityCollection,
+				currentTodo.CreationTime(),
+				nil,
+			)
+			return
+		},
 	)
 	if err != nil {
 		return s.f.WrapError(err)

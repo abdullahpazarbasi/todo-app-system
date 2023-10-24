@@ -19,6 +19,7 @@ func main() {
 	ctx := context.Background()
 
 	environmentVariableAccessor := coreAdapter.NewEnvironmentVariableAccessor("configs/.env")
+	clock := coreAdapter.NewClock()
 	idGenerator := coreAdapter.NewUUIDGenerator()
 
 	// Echo instance
@@ -48,7 +49,10 @@ func main() {
 	}()
 
 	userFactory := domainUser.NewFactory()
-	todoFactory := domainTodo.NewFactory(idGenerator)
+	todoFactory := domainTodo.NewFactory(
+		clock,
+		idGenerator,
+	)
 	faultFactory := domainFault.NewFactory(
 		environmentVariableAccessor,
 		configs.EnvironmentVariableNameAppDebug,

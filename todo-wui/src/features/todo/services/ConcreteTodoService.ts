@@ -15,7 +15,7 @@ export default class ConcreteTodoService implements TodoService {
         const formData = new URLSearchParams();
         formData.append('value', todo.value || "");
         const response = await this.client?.post(
-            '',
+            '/api/todos',
             formData,
             {
                 headers: {
@@ -28,7 +28,11 @@ export default class ConcreteTodoService implements TodoService {
     };
 
     findAll = async (): Promise<Todo[]> => {
-        const response = await this.client.get('');
+        const response = await this.client.get('/api/todos');
+
+        if (response.status === 204) {
+            return [];
+        }
 
         return response.data;
     };
@@ -42,7 +46,7 @@ export default class ConcreteTodoService implements TodoService {
             formData.append('completed', todo.completed ? "true" : "false");
         }
         const response = await this.client.patch(
-            '/' + todo.id,
+            '/api/todos/' + todo.id,
             formData,
             {
                 headers: {
@@ -56,8 +60,12 @@ export default class ConcreteTodoService implements TodoService {
 
     remove = async (id: string): Promise<Todo[]> => {
         const response = await this.client.delete(
-            '/' + id,
+            '/api/todos/' + id,
         );
+
+        if (response.status === 204) {
+            return [];
+        }
 
         return response.data;
     };

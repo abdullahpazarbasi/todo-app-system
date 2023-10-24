@@ -104,7 +104,7 @@ func (s *todoService) Modify(
 		todoTagEntityCollection = s.todoFactory.CreateTodoTagEntityCollectionFromKeySlice(keys)
 	}
 
-	err = s.todoRepository.Replace(
+	err = s.todoRepository.Modify(
 		ctx,
 		s.todoFactory.CreateTodoEntity(
 			id,

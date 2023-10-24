@@ -43,7 +43,7 @@ func (r *repository) Create(
 	var flt domainFaultPort.Fault
 
 	todoTagItems := make([]TodoTag, 0)
-	for _, tag := range *todo.Tags() {
+	for _, tag := range todo.Tags().ToSlice() {
 		todoTagItems = append(todoTagItems, TodoTag{
 			ID:     tag.ID(),
 			TodoID: tag.Todo().ID(),
@@ -83,9 +83,10 @@ func (r *repository) FindAllForUser(
 	ctx context.Context,
 	userID string,
 ) (
-	*[]domainTodoPort.TodoEntity,
+	domainTodoPort.TodoEntityCollection,
 	error,
 ) {
+	var err error
 	var flt domainFaultPort.Fault
 
 	tx := r.db.WithContext(ctx).Begin()
@@ -112,44 +113,61 @@ func (r *repository) FindAllForUser(
 		return nil, flt
 	}
 
-	var todoTagEntities []domainTodoPort.TodoTagEntity
-	todoEntities := make([]domainTodoPort.TodoEntity, 0)
-	for _, todoMap := range todoItems {
-		todoTagEntities = make([]domainTodoPort.TodoTagEntity, 0)
-		for _, todoTagMap := range todoMap.Tags {
-			todoTagEntities = append(todoTagEntities, r.todoFactory.CreateTodoTagEntity(
-				todoTagMap.ID,
-				nil,
-				todoTagMap.Key,
-			))
+	var todoTagEntity domainTodoPort.TodoTagEntity
+	var todoEntityCollection domainTodoPort.TodoEntityCollection
+	var todoTagEntityCollection domainTodoPort.TodoTagEntityCollection
+	todoEntityCollection, err = r.todoFactory.CreateTodoEntityCollection()
+	if err != nil {
+		return nil, r.f.WrapError(err)
+	}
+	for _, todoItem := range todoItems {
+		todoTagEntityCollection, err = r.todoFactory.CreateTodoTagEntityCollection()
+		if err != nil {
+			return nil, r.f.WrapError(err)
 		}
-		todoEntities = append(todoEntities, r.todoFactory.CreateTodoEntity(
-			todoMap.ID,
-			r.userFactory.CreateUserEntity(todoMap.UserID),
-			todoMap.Label,
-			&todoTagEntities,
-		))
+		for _, todoTagItem := range todoItem.Tags {
+			todoTagEntity, err = r.todoFactory.CreateTodoTagEntity(
+				todoTagItem.ID,
+				nil,
+				todoTagItem.Key,
+				&todoTagItem.CreatedAt,
+				&todoTagItem.UpdatedAt,
+			)
+			if err != nil {
+				return nil, r.f.WrapError(err)
+			}
+			todoTagEntityCollection.Append(todoTagEntity)
+		}
+		var userEntity domainUserPort.UserEntity
+		userEntity, err = r.userFactory.CreateUserEntity(todoItem.UserID)
+		if err != nil {
+			return nil, r.f.WrapError(err)
+		}
+		var todoEntity domainTodoPort.TodoEntity
+		todoEntity, err = r.todoFactory.CreateTodoEntity(
+			todoItem.ID,
+			userEntity,
+			todoItem.Label,
+			todoTagEntityCollection,
+			&todoItem.CreatedAt,
+			&todoItem.UpdatedAt,
+		)
+		if err != nil {
+			return nil, r.f.WrapError(err)
+		}
+		todoEntityCollection.Append(todoEntity)
 	}
 
-	return &todoEntities, flt
+	return todoEntityCollection, flt
 }
 
 func (r *repository) Update(
 	ctx context.Context,
-	todo domainTodoPort.TodoEntity,
+	id string,
+	manipulate func(currentTodo domainTodoPort.TodoEntity) (newTodo domainTodoPort.TodoEntity, err error),
 ) error {
+	var err error
 	var flt domainFaultPort.Fault
-
-	todoTagItems := make([]TodoTag, 0)
-	for _, tag := range *todo.Tags() {
-		todoTagItems = append(todoTagItems, TodoTag{
-			ID: tag.ID(),
-		})
-	}
-	todoItem := &Todo{
-		ID:   todo.ID(),
-		Tags: todoTagItems,
-	}
 
 	tx := r.db.WithContext(ctx).Begin()
 	defer func() {
@@ -163,21 +181,85 @@ func (r *repository) Update(
 
 		return flt
 	}
-	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).First(&todoItem).Error)
+	currentTodoItem := &Todo{
+		ID: id,
+	}
+	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).First(&currentTodoItem).Error)
 	if flt != nil {
 		tx.WithContext(ctx).Rollback()
 
 		return flt
 	}
-	todoItem.UserID = todo.User().ID()
-	todoItem.Label = todo.Label()
-	for _, tag := range *todo.Tags() {
-		for _, todoTagItem := range todoItem.Tags {
-			todoTagItem.TodoID = tag.Todo().ID()
-			todoTagItem.Key = tag.Key()
-		}
+	var currentUserEntity domainUserPort.UserEntity
+	currentUserEntity, err = r.userFactory.CreateUserEntity(currentTodoItem.UserID)
+	if err != nil {
+		tx.WithContext(ctx).Rollback()
+
+		return r.f.WrapError(err)
 	}
-	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Save(&todoItem).Error)
+	var currentTodoTagEntityCollection domainTodoPort.TodoTagEntityCollection
+	currentTodoTagEntityCollection, err = r.todoFactory.CreateTodoTagEntityCollection()
+	if err != nil {
+		tx.WithContext(ctx).Rollback()
+
+		return r.f.WrapError(err)
+	}
+	var currentTodoTagEntity domainTodoPort.TodoTagEntity
+	for _, currentTodoTagItem := range currentTodoItem.Tags {
+		currentTodoTagEntity, err = r.todoFactory.CreateTodoTagEntity(
+			currentTodoTagItem.ID,
+			nil,
+			currentTodoTagItem.Key,
+			&currentTodoTagItem.CreatedAt,
+			&currentTodoTagItem.UpdatedAt,
+		)
+		if err != nil {
+			tx.WithContext(ctx).Rollback()
+
+			return r.f.WrapError(err)
+		}
+		currentTodoTagEntityCollection.Append(currentTodoTagEntity)
+	}
+	var currentTodoEntity domainTodoPort.TodoEntity
+	currentTodoEntity, err = r.todoFactory.CreateTodoEntity(
+		currentTodoItem.ID,
+		currentUserEntity,
+		currentTodoItem.Label,
+		currentTodoTagEntityCollection,
+		&currentTodoItem.CreatedAt,
+		&currentTodoItem.UpdatedAt,
+	)
+	if err != nil {
+		tx.WithContext(ctx).Rollback()
+
+		return r.f.WrapError(err)
+	}
+
+	var newTodoEntity domainTodoPort.TodoEntity
+	newTodoEntity, err = manipulate(currentTodoEntity)
+	if err != nil {
+		tx.WithContext(ctx).Rollback()
+
+		return r.f.WrapError(err)
+	}
+
+	newTodoTagItems := make([]TodoTag, 0)
+	for _, newTodoTagEntity := range newTodoEntity.Tags().ToSlice() {
+		newTodoTagItems = append(newTodoTagItems, TodoTag{
+			ID:        newTodoTagEntity.ID(),
+			TodoID:    newTodoEntity.ID(),
+			Key:       newTodoTagEntity.Key(),
+			CreatedAt: *newTodoTagEntity.CreationTime(),
+		})
+	}
+	newTodoItem := &Todo{
+		ID:        newTodoEntity.ID(),
+		UserID:    newTodoEntity.User().ID(),
+		Label:     newTodoEntity.Label(),
+		Tags:      newTodoTagItems,
+		CreatedAt: *newTodoEntity.CreationTime(),
+	}
+	flt = r.translateGormErrorToApplicationFault(tx.WithContext(ctx).Save(&newTodoItem).Error)
 	if flt != nil {
 		tx.WithContext(ctx).Rollback()
 

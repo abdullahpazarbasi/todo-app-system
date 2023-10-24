@@ -5,22 +5,9 @@ import ConcreteTodoService from "@/features/todo/services/ConcreteTodoService";
 import ConcreteTodoUseCase from "@/features/todo/usecases/ConcreteTodoUseCase";
 
 import {ref} from "vue";
-import axios from "axios";
+import type {AxiosInstance} from "axios";
 
-export function useTodoFeature(): TodoUseCase {
-    const httpClient = axios.create({
-        baseURL: import.meta.env.VITE_TODO_WBFF_BASE_URL + "/api/todos",
-    });
-    httpClient.interceptors.request.use(
-        (config) => {
-            const token = localStorage.getItem('token');
-            if (token != null && token.length > 0) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-
-            return config;
-        },
-    );
+export function useTodoFeature(httpClient: AxiosInstance): TodoUseCase {
     const todoService: TodoService = new ConcreteTodoService(
         httpClient,
     );
