@@ -1,13 +1,12 @@
 import type AuthService from "@/features/auth/services/AuthService";
-
-import type {Axios} from "axios";
 import type TokenClaim from "@/features/auth/models/TokenClaim";
+import type HttpClient from "@/core/http/HttpClient";
 
 export default class ConcreteAuthService implements AuthService {
 
-    protected client: Axios;
+    protected client: HttpClient;
 
-    constructor(client: Axios) {
+    constructor(client: HttpClient) {
         this.client = client;
     }
 
@@ -15,7 +14,7 @@ export default class ConcreteAuthService implements AuthService {
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
-        const response = await this.client?.post(
+        const response = await this.client.post<TokenClaim>(
             '/auth/token-claims',
             formData,
             {

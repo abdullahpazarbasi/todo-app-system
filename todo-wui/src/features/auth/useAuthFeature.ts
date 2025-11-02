@@ -3,14 +3,16 @@ import ConcreteAuthUseCase from "@/features/auth/usecases/ConcreteAuthUseCase";
 import type AuthService from "@/features/auth/services/AuthService";
 import ConcreteAuthService from "@/features/auth/services/ConcreteAuthService";
 
-import type {AxiosInstance} from "axios";
+import type HttpClient from "@/core/http/HttpClient";
+import type {HttpError} from "@/core/http/HttpClient";
 import type {Router} from "vue-router";
 
-export function useAuthFeature(router: Router, httpClient: AxiosInstance): AuthUseCase {
+export function useAuthFeature(router: Router, httpClient: HttpClient): AuthUseCase {
     httpClient.interceptors.request.use(
         (config) => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem("token");
             if (token != null && token.length > 0) {
+                config.headers = config.headers ?? {};
                 config.headers.Authorization = `Bearer ${token}`;
             }
 
@@ -21,13 +23,13 @@ export function useAuthFeature(router: Router, httpClient: AxiosInstance): AuthU
         response => {
             return response;
         },
-        error => {
-            if (error.response.status === 401) {
-                return router.push({name: "Login"});
+        async (error: HttpError) => {
+            if (error.response?.status === 401) {
+                await router.push({name: "Login"});
             }
 
-            return Promise.reject(error);
-        }
+            throw error;
+        },
     );
     const authService: AuthService = new ConcreteAuthService(
         httpClient,

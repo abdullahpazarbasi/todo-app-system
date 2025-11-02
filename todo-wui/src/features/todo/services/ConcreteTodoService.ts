@@ -1,20 +1,19 @@
 import type TodoService from "@/features/todo/services/TodoService";
 import type Todo from "@/features/todo/models/Todo";
-
-import type {Axios} from "axios";
+import type HttpClient from "@/core/http/HttpClient";
 
 export default class ConcreteTodoService implements TodoService {
 
-    protected client: Axios;
+    protected client: HttpClient;
 
-    constructor(client: Axios) {
+    constructor(client: HttpClient) {
         this.client = client;
     }
 
     add = async (todo: Todo): Promise<Todo[]> => {
         const formData = new URLSearchParams();
         formData.append('value', todo.value || "");
-        const response = await this.client?.post(
+        const response = await this.client.post<Todo[]>(
             '/api/todos',
             formData,
             {
@@ -28,7 +27,7 @@ export default class ConcreteTodoService implements TodoService {
     };
 
     findAll = async (): Promise<Todo[]> => {
-        const response = await this.client.get('/api/todos');
+        const response = await this.client.get<Todo[]>('/api/todos');
 
         if (response.status === 204) {
             return [];
@@ -45,7 +44,7 @@ export default class ConcreteTodoService implements TodoService {
         if (todo.completed !== null) {
             formData.append('completed', todo.completed ? "true" : "false");
         }
-        const response = await this.client.patch(
+        const response = await this.client.patch<Todo[]>(
             '/api/todos/' + todo.id,
             formData,
             {
@@ -59,7 +58,7 @@ export default class ConcreteTodoService implements TodoService {
     };
 
     remove = async (id: string): Promise<Todo[]> => {
-        const response = await this.client.delete(
+        const response = await this.client.delete<Todo[]>(
             '/api/todos/' + id,
         );
 

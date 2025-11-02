@@ -1,6 +1,4 @@
 import {createApp} from "vue";
-import axios from "axios";
-import VueAxios from "vue-axios";
 
 import AppView from "@/core/views/AppView.vue";
 import router from "@/core/routers/router";
@@ -13,7 +11,6 @@ import "@fortawesome/fontawesome-free/css/all.min.css"
 const app = createApp(AppView);
 
 app.use(router);
-app.use(VueAxios, axios);
 app.use(authUseCasePlugin, router, httpClient);
 app.use(todoUseCasePlugin, router, httpClient);
 
