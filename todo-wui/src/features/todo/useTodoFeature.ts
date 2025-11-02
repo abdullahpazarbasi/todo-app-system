@@ -5,9 +5,9 @@ import ConcreteTodoService from "@/features/todo/services/ConcreteTodoService";
 import ConcreteTodoUseCase from "@/features/todo/usecases/ConcreteTodoUseCase";
 
 import {ref} from "vue";
-import type {AxiosInstance} from "axios";
+import type HttpClient from "@/core/http/HttpClient";
 
-export function useTodoFeature(httpClient: AxiosInstance): TodoUseCase {
+export function useTodoFeature(httpClient: HttpClient): TodoUseCase {
     const todoService: TodoService = new ConcreteTodoService(
         httpClient,
     );

@@ -3,10 +3,10 @@ import type AuthUseCase from "@/features/auth/usecases/AuthUseCase";
 
 import type {App} from "vue";
 import type {Router} from "vue-router";
-import type {AxiosInstance} from "axios";
+import type HttpClient from "@/core/http/HttpClient";
 import {decode} from "jsonwebtoken-esm";
 
-export default function authUseCasePlugin(app: App, router: Router, httpClient: AxiosInstance) {
+export default function authUseCasePlugin(app: App, router: Router, httpClient: HttpClient) {
     const authUseCase: AuthUseCase = useAuthFeature(router, httpClient);
 
     app.provide("authUseCase", authUseCase);

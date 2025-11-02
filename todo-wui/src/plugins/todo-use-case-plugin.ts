@@ -3,9 +3,9 @@ import type TodoUseCase from "@/features/todo/usecases/TodoUseCase";
 
 import type {App} from "vue";
 import type {Router} from "vue-router";
-import type {AxiosInstance} from "axios";
+import type HttpClient from "@/core/http/HttpClient";
 
-export default function todoUseCasePlugin(app: App, router: Router, httpClient: AxiosInstance) {
+export default function todoUseCasePlugin(app: App, router: Router, httpClient: HttpClient) {
     const todoUseCase: TodoUseCase = useTodoFeature(httpClient);
 
     app.provide("todoUseCase", todoUseCase);
